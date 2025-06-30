@@ -53,12 +53,12 @@ export default function PrivateLayout() {
         }}
       />
       <Tabs.Screen
-        name="entrepreneurship"
+        name="entrepreneurship/index"
         options={{
           title: "Emprendimiento",
-          headerTitle: "Emprendimiento",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bulb-outline" size={size} color={color} />
+            <Ionicons name="rocket-outline" size={size} color={color} />
           ),
         }}
       />
@@ -110,6 +110,38 @@ export default function PrivateLayout() {
         name="training/learn"
         options={{
           headerTitle: "Aprender",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="entrepreneurship/business-plan-simulator"
+        options={{
+          headerTitle: "Simulador de Plan",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="entrepreneurship/resource-center"
+        options={{
+          headerTitle: "Centro de Recursos",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="entrepreneurship/network"
+        options={{
+          headerTitle: "Red de Contactos",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="entrepreneurship/mentors"
+        options={{
+          headerTitle: "Mentorías",
           href: null,
           tabBarStyle: { display: "none" },
         }}
