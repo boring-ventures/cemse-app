@@ -43,10 +43,10 @@ export default function PrivateLayout() {
         }}
       />
       <Tabs.Screen
-        name="jobs"
+        name="jobs/index"
         options={{
           title: "Empleos",
-          headerTitle: "Búsqueda de Empleo",
+          headerShown: true,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="briefcase-outline" size={size} color={color} />
           ),
@@ -78,6 +78,22 @@ export default function PrivateLayout() {
         name="edit-profile"
         options={{
           headerTitle: "Editar Perfil",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="jobs/apply"
+        options={{
+          headerTitle: "Aplicar",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="jobs/job-detail"
+        options={{
+          headerTitle: "Detalles",
           href: null,
           tabBarStyle: { display: "none" },
         }}
