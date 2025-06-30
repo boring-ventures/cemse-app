@@ -133,7 +133,7 @@ export default function PrivateLayout() {
       <Tabs.Screen
         name="entrepreneurship/network"
         options={{
-          headerTitle: "Red de Contactos",
+          headerShown: false,
           href: null,
           tabBarStyle: { display: "none" },
         }}
@@ -141,7 +141,7 @@ export default function PrivateLayout() {
       <Tabs.Screen
         name="entrepreneurship/mentors"
         options={{
-          headerTitle: "Mentorías",
+          headerShown: false,
           href: null,
           tabBarStyle: { display: "none" },
         }}

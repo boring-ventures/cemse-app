@@ -48,7 +48,7 @@ export default function EntrepreneurshipHub() {
       icon: 'people-outline',
       route: '/entrepreneurship/network',
       color: '#FF9500',
-      isAvailable: false,
+      isAvailable: true,
     },
     {
       id: '4',
@@ -57,7 +57,7 @@ export default function EntrepreneurshipHub() {
       icon: 'school-outline',
       route: '/entrepreneurship/mentors',
       color: '#5856D6',
-      isAvailable: false,
+      isAvailable: true,
     },
   ];
 
