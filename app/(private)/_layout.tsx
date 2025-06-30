@@ -46,7 +46,7 @@ export default function PrivateLayout() {
         name="jobs/index"
         options={{
           title: "Empleos",
-          headerShown: true,
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="briefcase-outline" size={size} color={color} />
           ),

@@ -6,7 +6,8 @@ import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { TabConfig } from '@/app/types/jobs';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useState } from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function JobsScreen() {
   const [activeTab, setActiveTab] = useState(0);
