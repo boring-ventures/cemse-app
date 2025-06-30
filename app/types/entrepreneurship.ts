@@ -38,18 +38,41 @@ export interface FormField {
 
 export interface Resource {
   id: string;
-  type: 'Planificación' | 'Validación' | 'Finanzas' | 'Marketing' | 'Legal' | 'Operaciones';
+  type: 'Video' | 'Plantilla' | 'Guía' | 'Herramienta' | 'Podcast';
+  level: 'Principiante' | 'Intermedio' | 'Avanzado';
   title: string;
   description: string;
-  rating: number;
-  downloads: number;
   category: string;
-  fileType: 'document' | 'video' | 'template' | 'calculator' | 'guide';
-  thumbnail?: string;
-  duration?: string;
-  fileSize?: string;
-  author: string;
+  duration: string;
+  rating: number;
+  ratingCount: number;
+  downloads: number;
+  fileInfo: string;
+  fileSize: string;
+  publishDate: string;
   tags: string[];
+  thumbnailUrl?: string;
+  previewUrl?: string;
+  downloadUrl?: string;
+  isFavorite: boolean;
+  author?: string;
+}
+
+export interface ResourceFilter {
+  types: string[];
+  levels: string[];
+  categories: string[];
+  durations: string[];
+  dateRanges: string[];
+  searchQuery: string;
+}
+
+export interface ResourceMetrics {
+  id: string;
+  title: string;
+  value: string | number;
+  icon: string;
+  color: string;
 }
 
 export interface EntrepreneurshipMetric {
@@ -121,4 +144,23 @@ export interface TabConfig {
 
 export interface PlanFormData {
   [stepId: number]: Record<string, string>;
+}
+
+export interface FilterOption {
+  id: string;
+  label: string;
+  selected: boolean;
+}
+
+export interface SortOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface DownloadProgress {
+  resourceId: string;
+  progress: number;
+  isComplete: boolean;
+  error?: string;
 } 

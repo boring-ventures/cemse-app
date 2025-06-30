@@ -1,21 +1,29 @@
 import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { Resource } from '@/app/types/entrepreneurship';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ThemedButton } from '../ThemedButton';
 import { ThemedText } from '../ThemedText';
 import { ThemedView } from '../ThemedView';
+import { RatingDisplay } from './RatingDisplay';
+import { ResourceBadge } from './ResourceBadge';
 
 interface ResourceCardProps {
   resource: Resource;
   onPress?: () => void;
+  onPreview?: () => void;
   onDownload?: () => void;
+  onFavoritePress?: () => void;
 }
 
 export const ResourceCard: React.FC<ResourceCardProps> = ({ 
   resource, 
   onPress,
-  onDownload 
+  onPreview,
+  onDownload,
+  onFavoritePress,
 }) => {
   const backgroundColor = useThemeColor({}, 'card');
   const textColor = useThemeColor({}, 'text');
@@ -23,54 +31,52 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
   const borderColor = useThemeColor({}, 'border');
   const iconColor = useThemeColor({}, 'tint');
 
-  const getTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      'Planificación': '#007AFF',
-      'Validación': '#32D74B',
-      'Finanzas': '#FFD60A',
-      'Marketing': '#FF3B30',
-      'Legal': '#8E8E93',
-      'Operaciones': '#5856D6',
-    };
-    return colors[type] || iconColor;
+  const handleFavoritePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onFavoritePress?.();
   };
 
-  const getFileTypeIcon = (fileType: string) => {
-    const icons: Record<string, string> = {
-      'document': 'document-text-outline',
-      'video': 'play-circle-outline',
-      'template': 'copy-outline',
-      'calculator': 'calculator-outline',
-      'guide': 'book-outline',
-    };
-    return icons[fileType] || 'document-outline';
+  const handlePreview = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPreview?.();
   };
 
-  const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
+  const handleDownload = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onDownload?.();
+  };
 
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <Ionicons key={i} name="star" size={12} color="#FFD60A" />
-      );
-    }
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric'
+    });
+  };
 
-    if (hasHalfStar) {
-      stars.push(
-        <Ionicons key="half" name="star-half" size={12} color="#FFD60A" />
-      );
-    }
+  const renderTags = () => {
+    const visibleTags = resource.tags.slice(0, 3);
+    const remainingCount = resource.tags.length - 3;
 
-    const remainingStars = 5 - Math.ceil(rating);
-    for (let i = 0; i < remainingStars; i++) {
-      stars.push(
-        <Ionicons key={`empty-${i}`} name="star-outline" size={12} color="#8E8E93" />
-      );
-    }
-
-    return stars;
+    return (
+      <View style={styles.tagsContainer}>
+        {visibleTags.map((tag, index) => (
+          <View key={index} style={[styles.tag, { backgroundColor: iconColor + '15' }]}>
+            <ThemedText style={[styles.tagText, { color: iconColor }]}>
+              {tag}
+            </ThemedText>
+          </View>
+        ))}
+        {remainingCount > 0 && (
+          <View style={[styles.tag, { backgroundColor: secondaryTextColor + '15' }]}>
+            <ThemedText style={[styles.tagText, { color: secondaryTextColor }]}>
+              +{remainingCount}
+            </ThemedText>
+          </View>
+        )}
+      </View>
+    );
   };
 
   return (
@@ -80,22 +86,23 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
       activeOpacity={0.7}
     >
       <ThemedView style={styles.content}>
+        {/* Header */}
         <View style={styles.header}>
-          <View style={[styles.typeTag, { backgroundColor: getTypeColor(resource.type) + '20' }]}>
-            <ThemedText style={[styles.typeText, { color: getTypeColor(resource.type) }]}>
-              {resource.type}
-            </ThemedText>
-          </View>
+          <ResourceBadge type={resource.type} level={resource.level} />
           
-          <View style={styles.fileTypeIcon}>
+          <TouchableOpacity 
+            style={styles.favoriteButton}
+            onPress={handleFavoritePress}
+          >
             <Ionicons 
-              name={getFileTypeIcon(resource.fileType) as any} 
+              name={resource.isFavorite ? "heart" : "heart-outline"} 
               size={20} 
-              color={iconColor} 
+              color={resource.isFavorite ? "#FF3B30" : secondaryTextColor} 
             />
-          </View>
+          </TouchableOpacity>
         </View>
 
+        {/* Main Content */}
         <View style={styles.main}>
           <ThemedText 
             type="defaultSemiBold" 
@@ -107,37 +114,75 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
           
           <ThemedText 
             style={[styles.description, { color: secondaryTextColor }]}
-            numberOfLines={2}
+            numberOfLines={3}
           >
             {resource.description}
           </ThemedText>
 
-          <View style={styles.metadata}>
-            <View style={styles.rating}>
-              <View style={styles.stars}>
-                {renderStars(resource.rating)}
-              </View>
-              <ThemedText style={[styles.ratingText, { color: secondaryTextColor }]}>
-                {resource.rating}
+          {/* Category and Duration */}
+          <View style={styles.categoryRow}>
+            <View style={styles.categoryInfo}>
+              <Ionicons name="folder-outline" size={14} color={secondaryTextColor} />
+              <ThemedText style={[styles.categoryText, { color: secondaryTextColor }]}>
+                {resource.category}
               </ThemedText>
             </View>
-
-            <View style={styles.downloads}>
-              <Ionicons name="download-outline" size={14} color={secondaryTextColor} />
-              <ThemedText style={[styles.downloadsText, { color: secondaryTextColor }]}>
-                {resource.downloads.toLocaleString()} descargas
+            
+            <View style={styles.durationInfo}>
+              <Ionicons name="time-outline" size={14} color={secondaryTextColor} />
+              <ThemedText style={[styles.durationText, { color: secondaryTextColor }]}>
+                {resource.duration}
               </ThemedText>
             </View>
           </View>
         </View>
 
+        {/* Metrics */}
+        <View style={styles.metricsSection}>
+          <View style={styles.metricsRow}>
+            <RatingDisplay 
+              rating={resource.rating} 
+              ratingCount={resource.ratingCount}
+              size="small"
+            />
+            
+            <View style={styles.downloadsInfo}>
+              <Ionicons name="download-outline" size={14} color={secondaryTextColor} />
+              <ThemedText style={[styles.downloadsText, { color: secondaryTextColor }]}>
+                {resource.downloads.toLocaleString()}
+              </ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.fileInfoRow}>
+            <ThemedText style={[styles.fileInfo, { color: secondaryTextColor }]}>
+              {resource.fileInfo} • {resource.fileSize}
+            </ThemedText>
+            
+            <ThemedText style={[styles.date, { color: secondaryTextColor }]}>
+              {formatDate(resource.publishDate)}
+            </ThemedText>
+          </View>
+        </View>
+
+        {/* Tags */}
+        {renderTags()}
+
+        {/* Actions */}
         <View style={styles.actions}>
-          <TouchableOpacity 
-            style={[styles.downloadButton, { backgroundColor: iconColor + '20' }]}
-            onPress={onDownload}
-          >
-            <Ionicons name="download" size={16} color={iconColor} />
-          </TouchableOpacity>
+          <ThemedButton
+            title="Vista Previa"
+            onPress={handlePreview}
+            type="outline"
+            style={styles.previewButton}
+          />
+          
+          <ThemedButton
+            title="Descargar"
+            onPress={handleDownload}
+            type="primary"
+            style={styles.downloadButton}
+          />
         </View>
       </ThemedView>
     </TouchableOpacity>
@@ -146,64 +191,77 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 16,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   content: {
-    padding: 16,
+    padding: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
-  typeTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  typeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  fileTypeIcon: {
+  favoriteButton: {
     padding: 4,
   },
   main: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 16,
-    marginBottom: 6,
-    lineHeight: 22,
+    fontSize: 18,
+    marginBottom: 8,
+    lineHeight: 24,
   },
   description: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
   },
-  metadata: {
+  categoryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  rating: {
+  categoryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  stars: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  ratingText: {
+  categoryText: {
     fontSize: 12,
     fontWeight: '500',
   },
-  downloads: {
+  durationInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  durationText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  metricsSection: {
+    marginBottom: 16,
+    gap: 8,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  downloadsInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -212,14 +270,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  fileInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fileInfo: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  date: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   actions: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  previewButton: {
+    flex: 1,
   },
   downloadButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 1,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 }); 

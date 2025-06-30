@@ -29,7 +29,7 @@ export default function EntrepreneurshipHub() {
       description: 'Crea tu plan de negocios paso a paso',
       icon: 'document-text-outline',
       route: '/entrepreneurship/business-plan-simulator',
-      color: '#007AFF',
+      color: '#8B5CF6',
       isAvailable: true,
     },
     {
@@ -39,7 +39,7 @@ export default function EntrepreneurshipHub() {
       icon: 'library-outline',
       route: '/entrepreneurship/resource-center',
       color: '#32D74B',
-      isAvailable: false,
+      isAvailable: true,
     },
     {
       id: '3',
@@ -65,40 +65,57 @@ export default function EntrepreneurshipHub() {
   const popularResources: Resource[] = [
     {
       id: '1',
-      type: 'Planificación',
+      type: 'Plantilla',
+      level: 'Principiante',
       title: 'Plantilla de Plan de Negocios',
       description: 'Plantilla completa en Word para crear tu plan de negocios paso a paso',
+      category: 'Planificación',
+      duration: '30 minutos',
       rating: 4.8,
+      ratingCount: 156,
       downloads: 2847,
-      category: 'plantillas',
-      fileType: 'document',
-      author: 'CEMSE Bolivia',
+      fileInfo: 'DOCX • 2.5 MB',
+      fileSize: '2.5 MB',
+      publishDate: '2024-01-14',
       tags: ['plan de negocios', 'plantilla', 'planificación'],
+      isFavorite: false,
+      author: 'CEMSE Bolivia',
     },
     {
       id: '2',
-      type: 'Validación',
+      type: 'Guía',
+      level: 'Intermedio',
       title: 'Cómo Validar tu Idea de Negocio',
       description: 'Guía práctica para validar tu idea antes de invertir tiempo y dinero',
+      category: 'Validación',
+      duration: '45 minutos',
       rating: 4.6,
+      ratingCount: 98,
       downloads: 1923,
-      category: 'guías',
-      fileType: 'guide',
-      author: 'Dr. María Rodríguez',
+      fileInfo: 'PDF • 5.1 MB',
+      fileSize: '5.1 MB',
+      publishDate: '2024-01-19',
       tags: ['validación', 'idea de negocio', 'investigación'],
+      isFavorite: false,
+      author: 'Dr. María Rodríguez',
     },
     {
       id: '3',
-      type: 'Finanzas',
+      type: 'Video',
+      level: 'Intermedio',
       title: 'Finanzas para Emprendedores',
       description: 'Video curso sobre gestión financiera básica para startups',
+      category: 'Finanzas',
+      duration: '2 horas',
       rating: 4.9,
+      ratingCount: 234,
       downloads: 3456,
-      category: 'cursos',
-      fileType: 'video',
-      duration: '2h 30m',
-      author: 'Carlos Mendoza',
+      fileInfo: 'MP4 • 850 MB',
+      fileSize: '850 MB',
+      publishDate: '2024-01-09',
       tags: ['finanzas', 'startups', 'gestión financiera'],
+      isFavorite: false,
+      author: 'Carlos Mendoza',
     },
   ];
 
@@ -119,8 +136,12 @@ export default function EntrepreneurshipHub() {
 
   const handleExploreResources = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // For now, we'll just show a placeholder message
-    console.log('Explore resources - Coming soon');
+    router.push('/entrepreneurship/resource-center');
+  };
+
+  const handleViewAllResources = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/entrepreneurship/resource-center');
   };
 
   const handleResourcePress = (resource: Resource) => {
@@ -164,19 +185,18 @@ export default function EntrepreneurshipHub() {
               </View>
               
               <ThemedText type="title" style={styles.heroTitle}>
-                Convierte tu Idea en Realidad
+                🚀 Convierte tu Idea en Realidad
               </ThemedText>
               
               <ThemedText style={styles.heroSubtitle}>
-                Accede a herramientas, recursos y mentorías para lanzar tu emprendimiento exitoso en Bolivia
+                Crea tu plan de negocios paso a paso con nuestras herramientas gratuitas diseñadas para emprendedores bolivianos
               </ThemedText>
               
               <ThemedButton
-                title="Crear Plan de Negocios"
+                title="🚀 Crear Mi Plan Ahora"
                 onPress={handleCreateBusinessPlan}
                 type="primary"
                 style={styles.heroCTA}
-                textStyle={styles.heroCTAText}
               />
             </View>
           </LinearGradient>
@@ -209,9 +229,12 @@ export default function EntrepreneurshipHub() {
                 </ThemedText>
               </View>
               
-              <TouchableOpacity style={styles.viewAllButton}>
+              <TouchableOpacity 
+                style={[styles.viewAllButton, { backgroundColor: iconColor + '15' }]}
+                onPress={handleViewAllResources}
+              >
                 <ThemedText style={[styles.viewAllText, { color: iconColor }]}>
-                  Ver todos
+                  📖 Ver todos
                 </ThemedText>
                 <Ionicons name="chevron-forward" size={16} color={iconColor} />
               </TouchableOpacity>
@@ -243,19 +266,18 @@ export default function EntrepreneurshipHub() {
               </View>
               
               <ThemedText type="subtitle" style={styles.ctaTitle}>
-                ¿Listo para Emprender?
+                📚 Recursos Exclusivos Disponibles
               </ThemedText>
               
               <ThemedText style={styles.ctaSubtitle}>
-                Accede a recursos exclusivos y conecta con la comunidad emprendedora
+                Accede a plantillas, guías, videos y herramientas profesionales para hacer crecer tu emprendimiento
               </ThemedText>
               
               <ThemedButton
-                title="Explorar Recursos"
+                title="📖 Ver Todos los Recursos"
                 onPress={handleExploreResources}
-                type="outline"
-                style={styles.ctaButton}
-                textStyle={styles.ctaButtonText}
+                type="primary"
+                style={styles.ctaCTA}
               />
             </View>
           </LinearGradient>
@@ -310,14 +332,18 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   heroCTA: {
-    backgroundColor: 'white',
+    backgroundColor: 'black',
     borderRadius: 12,
     paddingHorizontal: 32,
-    paddingVertical: 14,
-  },
-  heroCTAText: {
-    color: '#6B46C1',
-    fontWeight: '600',
+    paddingVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   featuresSection: {
     paddingHorizontal: 20,
@@ -329,11 +355,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sectionSubtitle: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
   },
   featuresGrid: {
-    marginTop: 16,
+    gap: 16,
   },
   resourcesSection: {
     paddingHorizontal: 20,
@@ -343,27 +370,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
   },
   resourcesList: {
-    gap: 0,
+    gap: 12,
   },
   ctaSection: {
     marginHorizontal: 20,
-    borderRadius: 16,
-    paddingHorizontal: 24,
+    borderRadius: 20,
+    paddingHorizontal: 20,
     paddingVertical: 32,
     marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
   },
   ctaContent: {
     alignItems: 'center',
@@ -374,34 +411,37 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   ctaIcon: {
-    opacity: 0.8,
+    opacity: 0.9,
   },
   ctaTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: 'white',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+    lineHeight: 28,
   },
   ctaSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: 'white',
     textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-    opacity: 0.9,
+    marginBottom: 24,
+    lineHeight: 22,
+    opacity: 0.95,
   },
-  ctaButton: {
-    backgroundColor: 'transparent',
-    borderColor: 'white',
-    borderWidth: 2,
+  ctaCTA: {
+    backgroundColor: 'black',
     borderRadius: 12,
     paddingHorizontal: 28,
-    paddingVertical: 12,
-  },
-  ctaButtonText: {
-    color: 'white',
-    fontWeight: '600',
+    paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   bottomSpacing: {
     height: 40,

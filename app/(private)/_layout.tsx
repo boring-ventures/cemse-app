@@ -117,7 +117,7 @@ export default function PrivateLayout() {
       <Tabs.Screen
         name="entrepreneurship/business-plan-simulator"
         options={{
-          headerTitle: "Simulador de Plan",
+          headerShown: false,
           href: null,
           tabBarStyle: { display: "none" },
         }}
@@ -125,7 +125,7 @@ export default function PrivateLayout() {
       <Tabs.Screen
         name="entrepreneurship/resource-center"
         options={{
-          headerTitle: "Centro de Recursos",
+          headerShown: false,
           href: null,
           tabBarStyle: { display: "none" },
         }}
