@@ -2,6 +2,7 @@ import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { Course, EnrolledCourse } from '@/app/types/training';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedButton } from '../ThemedButton';
@@ -24,6 +25,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   onFavoritePress,
   onActionPress
 }) => {
+  const router = useRouter();
   const backgroundColor = useThemeColor({}, 'card');
   const borderColor = useThemeColor({}, 'border');
   const textColor = useThemeColor({}, 'text');
@@ -40,7 +42,38 @@ export const CourseCard: React.FC<CourseCardProps> = ({
 
   const handleActionPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onActionPress?.();
+    
+    if (onActionPress) {
+      onActionPress();
+      return;
+    }
+
+    // Default navigation behavior
+    if (!isEnrolled) {
+      // Go to course detail for non-enrolled courses
+      router.push(`/training/course-detail?id=${course.id}`);
+    } else {
+      // Go to learning screen for enrolled courses
+      switch (enrolledCourse?.state) {
+        case 'En progreso':
+        case 'Inscrito':
+        case 'Completado':
+          router.push(`/training/learn?id=${course.id}&lesson=lesson1`);
+          break;
+        default:
+          router.push(`/training/course-detail?id=${course.id}`);
+      }
+    }
+  };
+
+  const handleCardPress = () => {
+    if (onPress) {
+      onPress();
+      return;
+    }
+
+    // Default navigation to course detail
+    router.push(`/training/course-detail?id=${course.id}`);
   };
 
   const getActionButtonText = () => {
@@ -76,7 +109,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   return (
     <TouchableOpacity
       style={[styles.container, { backgroundColor, borderColor }]}
-      onPress={onPress}
+      onPress={handleCardPress}
       activeOpacity={0.7}
     >
       {/* Header with badges */}

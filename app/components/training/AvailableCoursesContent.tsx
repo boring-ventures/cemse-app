@@ -2,6 +2,7 @@ import { FormField } from '@/app/components/FormField';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { Course } from '@/app/types/training';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { FormikProps, useFormik } from 'formik';
 import React, { useState } from 'react';
 import { Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -19,6 +20,7 @@ export const AvailableCoursesContent: React.FC<AvailableCoursesContentProps> = (
   isRefreshing,
   onRefresh
 }) => {
+  const router = useRouter();
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('Popularidad');
   const backgroundColor = useThemeColor({}, 'background');
@@ -126,6 +128,17 @@ export const AvailableCoursesContent: React.FC<AvailableCoursesContentProps> = (
           : course
       )
     );
+  };
+
+  const handleCoursePress = (courseId: string) => {
+    router.push(`/training/course-detail?id=${courseId}`);
+  };
+
+  const handleEnrollPress = (courseId: string) => {
+    console.log('Enroll in course:', courseId);
+    // Here you would typically handle enrollment logic
+    // For now, we'll just navigate to course detail
+    router.push(`/training/course-detail?id=${courseId}`);
   };
 
   const FilterModal = () => (
@@ -275,9 +288,9 @@ export const AvailableCoursesContent: React.FC<AvailableCoursesContentProps> = (
               key={course.id}
               course={course}
               variant="available"
-              onPress={() => console.log('Course pressed:', course.id)}
+              onPress={() => handleCoursePress(course.id)}
               onFavoritePress={() => toggleFavorite(course.id)}
-              onActionPress={() => console.log('Enroll in course:', course.id)}
+              onActionPress={() => handleEnrollPress(course.id)}
             />
           ))}
         </View>

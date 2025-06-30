@@ -98,6 +98,22 @@ export default function PrivateLayout() {
           tabBarStyle: { display: "none" },
         }}
       />
+      <Tabs.Screen
+        name="training/course-detail"
+        options={{
+          headerTitle: "Detalle del Curso",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="training/learn"
+        options={{
+          headerTitle: "Aprender",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
     </Tabs>
   );
 }

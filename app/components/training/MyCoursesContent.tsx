@@ -3,6 +3,7 @@ import { MetricCard } from '@/app/components/dashboard/MetricCard';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { EnrolledCourse, TrainingMetric } from '@/app/types/training';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { FormikProps, useFormik } from 'formik';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -20,6 +21,7 @@ export const MyCoursesContent: React.FC<MyCoursesContentProps> = ({
   isRefreshing,
   onRefresh
 }) => {
+  const router = useRouter();
   const [filterBy, setFilterBy] = useState('Todos los cursos');
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -136,6 +138,14 @@ export const MyCoursesContent: React.FC<MyCoursesContentProps> = ({
     'Completado',
   ];
 
+  const handleCoursePress = (courseId: string) => {
+    router.push(`/training/course-detail?id=${courseId}`);
+  };
+
+  const handleContinuePress = (courseId: string) => {
+    router.push(`/training/learn?id=${courseId}`);
+  };
+
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <ScrollView
@@ -212,8 +222,8 @@ export const MyCoursesContent: React.FC<MyCoursesContentProps> = ({
               key={course.id}
               course={course}
               variant="enrolled"
-              onPress={() => console.log('Course pressed:', course.id)}
-              onActionPress={() => console.log('Continue course:', course.id)}
+              onPress={() => handleCoursePress(course.id)}
+              onActionPress={() => handleContinuePress(course.id)}
             />
           ))}
         </View>
