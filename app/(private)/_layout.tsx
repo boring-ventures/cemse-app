@@ -33,10 +33,10 @@ export default function PrivateLayout() {
         }}
       />
       <Tabs.Screen
-        name="training"
+        name="training/index"
         options={{
           title: "Capacitación",
-          headerTitle: "Capacitación y Cursos",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="school-outline" size={size} color={color} />
           ),
