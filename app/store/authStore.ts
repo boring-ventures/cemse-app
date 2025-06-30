@@ -160,7 +160,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   register: async (email, password, profile, avatar) => {
-    set({ isLoading: true, error: null });
+    // set({ isLoading: true, error: null });
     try {
       const { user, error } = await authService.signUp(
         email,
@@ -175,6 +175,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       );
 
       if (error) {
+        console.log('register authStore error', error);
         set({ error: error.message, isLoading: false });
         return false;
       }
@@ -200,7 +201,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ error: error.message });
       return false;
     } finally {
-      set({ isLoading: false });
+      // set({ isLoading: false });
     }
   },
 

@@ -148,6 +148,7 @@ export const authService = {
   ): Promise<AuthResponse> => {
     try {
       // 1. Registrar el usuario
+      console.log('signUp', email, password, profileData, avatarFile);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -159,6 +160,9 @@ export const authService = {
           },
         },
       });
+
+      console.log('signUp authService data', data);
+      console.log('signUp authService error', error);
 
       // 2. Si hay algún error, retornar
       if (error) {

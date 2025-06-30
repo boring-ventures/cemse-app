@@ -26,21 +26,54 @@ export default function PrivateLayout() {
         name="home"
         options={{
           title: "Inicio",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
+        name="training"
+        options={{
+          title: "Capacitación",
+          headerTitle: "Capacitación y Cursos",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="school-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="jobs"
+        options={{
+          title: "Empleos",
+          headerTitle: "Búsqueda de Empleo",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="briefcase-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="entrepreneurship"
+        options={{
+          title: "Emprendimiento",
+          headerTitle: "Emprendimiento",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bulb-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Perfil",
+          href: null,
+          tabBarStyle: { display: "none" },
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
-
       <Tabs.Screen
         name="edit-profile"
         options={{
