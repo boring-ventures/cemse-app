@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Boring Template Expo",
-    "slug": "boring-template-expo",
+    "name": "Cemse",
+    "slug": "cemse-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,14 +10,14 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.boringinc.boringtemplateexpo"
+      "bundleIdentifier": "com.cemse.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.boringinc.boringtemplateexpo"
+      "package": "com.cemse.app"
     },
     "web": {
       "bundler": "metro",
@@ -41,12 +41,12 @@
     },
     "extra": {
       "eas": {
-        "projectId": "8ba01203-a27b-4497-8c25-16641de49cb8"
+        "projectId": "b8410b1c-db89-4701-b35f-7a1d619d14c2"
       }
     },
-    "owner": "boring-ventures",
+    "owner": "cemse_org",
     "updates": {
-      "url": "https://u.expo.dev/8ba01203-a27b-4497-8c25-16641de49cb8"
+      "url": "b8410b1c-db89-4701-b35f-7a1d619d14c2"
     },
     "runtimeVersion": {
       "policy": "appVersion"

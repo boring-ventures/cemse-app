@@ -5,7 +5,7 @@
 
 export const Strings = {
   app: {
-    name: 'Boring Template',
+    name: 'Cemse',
   },
   common: {
     loading: 'Cargando datos...',
@@ -43,7 +43,7 @@ export const Strings = {
   },
   auth: {
     login: {
-      title: 'Bienvenido a Boring-Template-Expo',
+      title: 'Bienvenido a Cemse',
       emailPlaceholder: 'Correo electrónico',
       passwordPlaceholder: 'Contraseña',
       forgotPassword: '¿Olvidaste tu contraseña?',

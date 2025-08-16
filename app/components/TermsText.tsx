@@ -23,7 +23,7 @@ export const TermsText: React.FC<TermsTextProps> = ({
             Términos y Condiciones
           </ThemedText>
         </TouchableOpacity>{' '}
-        de Boring
+        de Cemse
       </ThemedText>
     </View>
   );
