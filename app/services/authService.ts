@@ -1,250 +1,136 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthError, Session, User } from '@supabase/supabase-js';
-import { supabase } from './supabaseClient';
+import * as SecureStore from 'expo-secure-store';
+import { 
+  User, 
+  AuthTokens, 
+  LoginCredentials, 
+  RegisterData, 
+  StoredSession, 
+  ProfileUpdateData,
+  ImageFile,
+  AuthError,
+  ApiResponse
+} from '@/app/types/auth';
+import { apiService } from './apiService';
 
-export type AuthResponse = {
-  user: User | null;
-  session: Session | null;
-  error: AuthError | null;
-};
+// Secure storage keys
+const TOKEN_KEY = 'auth.token';
+const REFRESH_TOKEN_KEY = 'auth.refresh_token';
+const USER_KEY = 'auth.user';
+const SESSION_KEY = 'auth.session';
 
-export type ProfileData = {
-  email: string;
-  first_name: string;
-  last_name: string;
-  avatar_url?: string;
-};
-
-export type ImageFile = {
-  uri: string;
-  name: string;
-  type: string;
-};
-
-// Clave para guardar la sesión en AsyncStorage
-const SESSION_KEY = 'supabase.session';
-
-// Bucket name from environment variables
-const bucket = process.env.EXPO_PUBLIC_SUPABASE_STORAGE_BUCKET || 'avatars';
+/**
+ * Enhanced AuthService with JWT-based authentication
+ * Replaces Supabase with custom backend integration
+ */
 
 export const authService = {
   /**
-   * Iniciar sesión con email y contraseña
+   * Store tokens securely
    */
-  signIn: async (email: string, password: string): Promise<AuthResponse> => {
+  storeTokens: async (tokens: AuthTokens): Promise<void> => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (data.session) {
-        // Guardar sesión en AsyncStorage
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(data.session));
-      }
-
-      return {
-        user: data?.user || null,
-        session: data?.session || null,
-        error,
-      };
-    } catch (err) {
-      console.error('Error signing in:', err);
-      return {
-        user: null,
-        session: null,
-        error: err as AuthError,
-      };
+      await Promise.all([
+        SecureStore.setItemAsync(TOKEN_KEY, tokens.token),
+        SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokens.refreshToken),
+      ]);
+      console.log('Tokens stored successfully');
+    } catch (error) {
+      console.error('Error storing tokens:', error);
+      throw error;
     }
   },
 
   /**
-   * Upload a file to Supabase Storage
+   * Get stored tokens
    */
-  uploadFile: async (
-    file: ImageFile,
-    userId: string,
-    contentType = 'image/jpeg',
-  ): Promise<string | null> => {
+  getStoredTokens: async (): Promise<AuthTokens | null> => {
     try {
-      if (!file || !file.uri) {
-        console.error('Error uploading file: Invalid file object');
-        return null;
+      const [token, refreshToken] = await Promise.all([
+        SecureStore.getItemAsync(TOKEN_KEY),
+        SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
+      ]);
+
+      if (token && refreshToken) {
+        return { token, refreshToken };
       }
+      return null;
+    } catch (error) {
+      console.error('Error getting stored tokens:', error);
+      return null;
+    }
+  },
 
-      const fileExt = file.uri.split('.').pop();
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+  /**
+   * Store user data securely
+   */
+  storeUser: async (user: User): Promise<void> => {
+    try {
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+      console.log('User data stored successfully');
+    } catch (error) {
+      console.error('Error storing user:', error);
+      throw error;
+    }
+  },
 
-      console.log(`Uploading file: ${filePath}, type: ${contentType}`);
-      
-      try {
-        const arrayBuffer = await (await fetch(file.uri)).arrayBuffer();
-        const fileData = new Uint8Array(arrayBuffer);
+  /**
+   * Get stored user data
+   */
+  getStoredUser: async (): Promise<User | null> => {
+    try {
+      const userString = await SecureStore.getItemAsync(USER_KEY);
+      if (userString) {
+        return JSON.parse(userString) as User;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting stored user:', error);
+      return null;
+    }
+  },
 
-        const { error, data } = await supabase.storage
-          .from(bucket)
-          .upload(filePath, fileData, {
-            contentType,
-            cacheControl: '3600',
-            upsert: false
-          });
+  /**
+   * Store complete session (user + tokens)
+   */
+  storeSession: async (user: User, tokens: AuthTokens): Promise<void> => {
+    try {
+      const session: StoredSession = {
+        user,
+        tokens,
+        timestamp: Date.now(),
+      };
 
-        if (error) {
-          console.error('Error uploading file to Supabase:', error);
+      await Promise.all([
+        authService.storeTokens(tokens),
+        authService.storeUser(user),
+        SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session)),
+      ]);
+
+      console.log('Complete session stored successfully');
+    } catch (error) {
+      console.error('Error storing session:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get stored session
+   */
+  getStoredSession: async (): Promise<StoredSession | null> => {
+    try {
+      const sessionString = await SecureStore.getItemAsync(SESSION_KEY);
+      if (sessionString) {
+        const session = JSON.parse(sessionString) as StoredSession;
+        
+        // Check if session is not too old (24 hours)
+        const dayInMs = 24 * 60 * 60 * 1000;
+        if (Date.now() - session.timestamp < dayInMs) {
+          return session;
+        } else {
+          // Session too old, remove it
+          await authService.clearSession();
           return null;
         }
-
-        console.log('File uploaded successfully:', filePath);
-        
-        // Return only the file path instead of the full URL
-        return filePath;
-      } catch (fetchError) {
-        console.error('Error fetching or processing file data:', fetchError);
-        return null;
-      }
-    } catch (err) {
-      console.error('Error in uploadFile:', err);
-      return null;
-    }
-  },
-
-  /**
-   * Get the public URL for a file in the storage bucket
-   */
-  getAvatarUrl: (filePath: string | null): string | null => {
-    if (!filePath) return null;
-    
-    // If it's already a full URL, return it as is
-    if (filePath.startsWith('http') || filePath.startsWith('data:')) {
-      return filePath;
-    }
-    
-    try {
-      console.log(`Getting public URL for: ${filePath} in bucket: ${bucket}`);
-      
-      const { data } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
-      
-      const url = data?.publicUrl || null;
-      console.log(`Public URL: ${url}`);
-      
-      return url;
-    } catch (err) {
-      console.error('Error getting avatar URL:', err);
-      return null;
-    }
-  },
-
-  /**
-   * Registrar un nuevo usuario
-   */
-  signUp: async (
-    email: string,
-    password: string,
-    profileData: ProfileData,
-    avatarFile: ImageFile | null = null,
-  ): Promise<AuthResponse> => {
-    try {
-      // 1. Registrar el usuario
-      console.log('signUp', email, password, profileData, avatarFile);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: profileData.first_name,
-            last_name: profileData.last_name,
-            avatar_url: profileData.avatar_url,
-          },
-        },
-      });
-
-      console.log('signUp authService data', data);
-      console.log('signUp authService error', error);
-
-      // 2. Si hay algún error, retornar
-      if (error) {
-        return {
-          user: null,
-          session: null,
-          error,
-        };
-      }
-
-      let avatarUrl: string | null = null;
-
-      // 3. Upload avatar if provided
-      if (avatarFile && data.user) {
-        avatarUrl = await authService.uploadFile(
-          avatarFile,
-          data.user.id,
-          avatarFile.type
-        );
-      }
-
-      // 4. Crear perfil en la tabla profiles
-      if (data.user) {
-        try {
-          await supabase.from('profiles').upsert({
-            id: data.user.id,
-            email,
-            first_name: profileData.first_name,
-            last_name: profileData.last_name,
-            avatar_url: avatarUrl || profileData.avatar_url,
-            updated_at: new Date(),
-          });
-        } catch (profileError) {
-          console.error('Error creating profile:', profileError);
-        }
-      }
-
-      // 5. Guardar sesión si existe
-      if (data.session) {
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(data.session));
-      }
-
-      return {
-        user: data?.user || null,
-        session: data?.session || null,
-        error: null,
-      };
-    } catch (err) {
-      console.error('Error signing up:', err);
-      return {
-        user: null,
-        session: null,
-        error: err as AuthError,
-      };
-    }
-  },
-
-  /**
-   * Cerrar sesión
-   */
-  signOut: async (): Promise<{ error: AuthError | null }> => {
-    try {
-      // Eliminar la sesión del AsyncStorage
-      await AsyncStorage.removeItem(SESSION_KEY);
-      
-      // Cerrar sesión en Supabase
-      const { error } = await supabase.auth.signOut();
-      return { error };
-    } catch (err) {
-      console.error('Error signing out:', err);
-      return { error: err as AuthError };
-    }
-  },
-
-  /**
-   * Recuperar sesión almacenada
-   */
-  getStoredSession: async (): Promise<Session | null> => {
-    try {
-      const sessionString = await AsyncStorage.getItem(SESSION_KEY);
-      if (sessionString) {
-        return JSON.parse(sessionString) as Session;
       }
       return null;
     } catch (error) {
@@ -254,31 +140,165 @@ export const authService = {
   },
 
   /**
-   * Recuperar sesión actual desde Supabase
+   * Clear all stored authentication data
    */
-  getSession: async (): Promise<Session | null> => {
+  clearSession: async (): Promise<void> => {
     try {
-      const { data } = await supabase.auth.getSession();
-      
-      // Si hay una sesión activa, actualizarla en AsyncStorage
-      if (data.session) {
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(data.session));
-      }
-      
-      return data.session;
+      await Promise.all([
+        SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {}),
+        SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => {}),
+        SecureStore.deleteItemAsync(USER_KEY).catch(() => {}),
+        SecureStore.deleteItemAsync(SESSION_KEY).catch(() => {}),
+      ]);
+      console.log('Session cleared successfully');
     } catch (error) {
-      console.error('Error getting session:', error);
-      return null;
+      console.error('Error clearing session:', error);
     }
   },
 
   /**
-   * Recuperar usuario actual
+   * Login with username and password
    */
-  getCurrentUser: async (): Promise<User | null> => {
+  signIn: async (username: string, password: string): Promise<ApiResponse<{ user: User; tokens: AuthTokens }>> => {
     try {
-      const { data } = await supabase.auth.getUser();
-      return data?.user || null;
+      const credentials: LoginCredentials = { username, password };
+      const response = await apiService.login(credentials);
+
+      if (response.success && response.data) {
+        const { user, token, refreshToken, role } = response.data;
+        const tokens: AuthTokens = { token, refreshToken };
+
+        // Validate that user has JOVENES role
+        if (user.role !== 'JOVENES') {
+          return {
+            success: false,
+            error: {
+              message: 'Acceso restringido. Esta aplicación es solo para usuarios JOVENES.',
+              code: 'INVALID_ROLE'
+            }
+          };
+        }
+
+        // Store session securely
+        await authService.storeSession(user, tokens);
+
+        return {
+          success: true,
+          data: { user, tokens }
+        };
+      }
+
+      return {
+        success: false,
+        error: response.error || { message: 'Error de inicio de sesión', code: 'SIGNIN_ERROR' }
+      };
+    } catch (error) {
+      console.error('Error in signIn:', error);
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Error de inicio de sesión',
+          code: 'SIGNIN_ERROR'
+        }
+      };
+    }
+  },
+
+  /**
+   * Register new user
+   */
+  signUp: async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    avatarFile?: ImageFile | null
+  ): Promise<ApiResponse<{ user: User; tokens: AuthTokens }>> => {
+    try {
+      const registerData: RegisterData = {
+        email,
+        password,
+        firstName,
+        lastName,
+        avatarUrl: undefined, // Will be set after upload if needed
+      };
+
+      const response = await apiService.register(registerData);
+
+      if (response.success && response.data) {
+        const { user, token, refreshToken } = response.data;
+        const tokens: AuthTokens = { token, refreshToken };
+
+        // Upload avatar if provided
+        if (avatarFile) {
+          // TODO: Implement avatar upload
+          console.log('Avatar upload will be implemented in future iteration');
+        }
+
+        // Store session securely
+        await authService.storeSession(user, tokens);
+
+        return {
+          success: true,
+          data: { user, tokens }
+        };
+      }
+
+      return {
+        success: false,
+        error: response.error || { message: 'Error en el registro', code: 'SIGNUP_ERROR' }
+      };
+    } catch (error) {
+      console.error('Error in signUp:', error);
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Error en el registro',
+          code: 'SIGNUP_ERROR'
+        }
+      };
+    }
+  },
+
+  /**
+   * Logout user
+   */
+  signOut: async (): Promise<void> => {
+    try {
+      const tokens = await authService.getStoredTokens();
+      
+      if (tokens) {
+        // Call API logout endpoint
+        await apiService.logout(tokens.token);
+      }
+    } catch (error) {
+      console.error('Error calling logout API:', error);
+    } finally {
+      // Always clear local session regardless of API call result
+      await authService.clearSession();
+    }
+  },
+
+  /**
+   * Get current user from API
+   */
+  getCurrentUser: async (token?: string): Promise<User | null> => {
+    try {
+      const accessToken = token || (await authService.getStoredTokens())?.token;
+      
+      if (!accessToken) {
+        return null;
+      }
+
+      const response = await apiService.getCurrentUser(accessToken);
+      
+      if (response.success && response.data) {
+        // Update stored user data
+        await authService.storeUser(response.data);
+        return response.data;
+      }
+
+      return null;
     } catch (error) {
       console.error('Error getting current user:', error);
       return null;
@@ -286,58 +306,171 @@ export const authService = {
   },
 
   /**
-   * Obtener perfil de usuario por ID
+   * Refresh access token
    */
-  getProfile: async (userId: string): Promise<ProfileData | null> => {
+  refreshAccessToken: async (): Promise<AuthTokens | null> => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('email, first_name, last_name, avatar_url')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
+      const storedTokens = await authService.getStoredTokens();
+      
+      if (!storedTokens?.refreshToken) {
         return null;
       }
 
-      return data as ProfileData;
-    } catch (error) {
-      console.error('Error getting profile:', error);
+      const response = await apiService.refreshToken(storedTokens.refreshToken);
+      
+      if (response.success && response.data) {
+        const newTokens: AuthTokens = {
+          token: response.data.token,
+          refreshToken: response.data.refreshToken,
+        };
+
+        await authService.storeTokens(newTokens);
+        return newTokens;
+      }
+
       return null;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Validate and refresh token if needed
+   */
+  validateToken: async (): Promise<boolean> => {
+    try {
+      const tokens = await authService.getStoredTokens();
+      
+      if (!tokens) {
+        return false;
+      }
+
+      // Try to validate current token
+      const isValid = await apiService.validateToken(tokens.token);
+      
+      if (isValid) {
+        return true;
+      }
+
+      // Try to refresh token
+      const newTokens = await authService.refreshAccessToken();
+      return !!newTokens;
+    } catch (error) {
+      console.error('Error validating token:', error);
+      return false;
     }
   },
 
   /**
    * Update user profile
    */
-  updateProfile: async (userId: string, profileData: Partial<ProfileData>): Promise<{ error: Error | null }> => {
+  updateProfile: async (profileData: ProfileUpdateData): Promise<ApiResponse<User>> => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          ...profileData,
-          updated_at: new Date(),
-        })
-        .eq('id', userId);
+      const tokens = await authService.getStoredTokens();
+      
+      if (!tokens) {
+        return {
+          success: false,
+          error: { message: 'No authentication token found', code: 'NO_TOKEN' }
+        };
+      }
 
-      return { error };
-    } catch (err) {
-      console.error('Error updating profile:', err);
-      return { error: err as Error };
+      const response = await apiService.updateProfile(tokens.token, profileData);
+      
+      if (response.success && response.data) {
+        // Update stored user data
+        await authService.storeUser(response.data);
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Error actualizando perfil',
+          code: 'UPDATE_PROFILE_ERROR'
+        }
+      };
     }
   },
 
   /**
-   * Restablecer contraseña
+   * Upload file - for backward compatibility
    */
-  resetPassword: async (email: string): Promise<{ error: AuthError | null }> => {
+  uploadFile: async (
+    file: ImageFile,
+    userId: string,
+    contentType = 'image/jpeg'
+  ): Promise<string | null> => {
+    return authService.uploadAvatar(file);
+  },
+
+  /**
+   * Upload user avatar
+   */
+  uploadAvatar: async (imageFile: ImageFile): Promise<string | null> => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-      return { error };
-    } catch (err) {
-      console.error('Error resetting password:', err);
-      return { error: err as AuthError };
+      const tokens = await authService.getStoredTokens();
+      
+      if (!tokens) {
+        console.error('No authentication token found');
+        return null;
+      }
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Create a blob from the image URI for React Native
+      const response = await fetch(imageFile.uri);
+      const blob = await response.blob();
+      
+      formData.append('avatar', blob as any, imageFile.name);
+
+      const uploadResponse = await apiService.uploadAvatar(tokens.token, formData);
+      
+      if (uploadResponse.success && uploadResponse.data) {
+        return uploadResponse.data.avatarUrl;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      return null;
     }
+  },
+
+  /**
+   * Request password reset
+   */
+  requestPasswordReset: async (email: string): Promise<ApiResponse<void>> => {
+    return apiService.requestPasswordReset(email);
+  },
+
+  /**
+   * Get avatar URL - for backward compatibility
+   */
+  getAvatarUrl: (avatarUrl: string | null): string | null => {
+    return avatarUrl; // With new API, URLs are returned directly
+  },
+
+  // Legacy compatibility methods (for gradual migration)
+  getSession: async () => {
+    const session = await authService.getStoredSession();
+    return session ? { user: session.user, session: session } : null;
+  },
+
+  getProfile: async (userId?: string) => {
+    const user = await authService.getStoredUser();
+    if (user) {
+      return {
+        email: user.email,
+        first_name: user.firstName,
+        last_name: user.lastName,
+        avatar_url: user.avatarUrl,
+      };
+    }
+    return null;
   },
 }; 

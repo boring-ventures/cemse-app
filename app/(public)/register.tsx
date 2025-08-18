@@ -59,11 +59,8 @@ export default function RegisterScreen() {
       const success = await register(
         values.email,
         values.password,
-        {
-          first_name: values.firstName,
-          last_name: values.lastName,
-          email: values.email,
-        },
+        values.firstName,
+        values.lastName,
         avatar
       );
       

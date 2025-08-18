@@ -1,8 +1,8 @@
-import { ImageFile } from "@/app/components/ImagePickerModal";
 import { authService } from "@/app/services/authService";
-import { User } from "@supabase/supabase-js";
+import { AuthTokens, ImageFile, User } from "@/app/types/auth";
 import { create } from "zustand";
 
+// Legacy profile type for backward compatibility
 type ProfileState = {
   first_name: string;
   last_name: string;
@@ -14,22 +14,27 @@ type AuthState = {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: User | null;
-  profile: ProfileState | null;
+  tokens: AuthTokens | null;
   error: string | null;
 
-  // Acciones
+  // Computed property for legacy compatibility
+  profile: ProfileState | null;
+
+  // Actions
   initialize: () => Promise<void>;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   register: (
     email: string,
     password: string,
-    profile: ProfileState,
+    firstName: string,
+    lastName: string,
     avatar?: ImageFile | null
   ) => Promise<boolean>;
   logout: () => Promise<void>;
   setError: (error: string | null) => void;
   clearError: () => void;
   restoreSession: () => Promise<boolean>;
+  updateUserData: (user: User) => void;
   updateProfile: (profileData: ProfileState) => void;
 };
 
@@ -37,8 +42,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoading: true,
   user: null,
-  profile: null,
+  tokens: null,
   error: null,
+
+  // Computed profile property for backward compatibility
+  get profile() {
+    const state = get();
+    if (!state.user) return null;
+    
+    return {
+      first_name: state.user.firstName,
+      last_name: state.user.lastName,
+      email: state.user.email,
+      avatar_url: state.user.avatarUrl,
+    };
+  },
 
   initialize: async () => {
     set({ isLoading: true });
@@ -46,11 +64,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const success = await get().restoreSession();
 
       if (!success) {
-        set({ isAuthenticated: false, user: null, profile: null });
+        set({ isAuthenticated: false, user: null, tokens: null });
       }
     } catch (error) {
       console.error("Error initializing auth store:", error);
-      set({ isAuthenticated: false, user: null, profile: null });
+      set({ isAuthenticated: false, user: null, tokens: null });
     } finally {
       set({ isLoading: false });
     }
@@ -58,150 +76,121 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   restoreSession: async () => {
     try {
-      // Intentar recuperar sesión desde AsyncStorage primero
+      // Try to restore session from secure storage
       const storedSession = await authService.getStoredSession();
 
-      // Si hay una sesión almacenada, usarla
-      if (storedSession?.user) {
-        const user = storedSession.user;
-        const userData = user.user_metadata as ProfileState;
+      if (storedSession?.user && storedSession?.tokens) {
+        // Validate token before restoring session
+        const isTokenValid = await authService.validateToken();
+        
+        if (isTokenValid) {
+          // Validate user role for JOVENES
+          if (storedSession.user.role !== 'JOVENES') {
+            console.warn('Invalid user role, clearing session');
+            await authService.clearSession();
+            return false;
+          }
 
-        // También obtener el perfil completo desde la base de datos si es necesario
-        let profileData = userData;
+          set({
+            isAuthenticated: true,
+            user: storedSession.user,
+            tokens: storedSession.tokens,
+            error: null,
+          });
 
-        if (user.id) {
-          const dbProfile = await authService.getProfile(user.id);
-          if (dbProfile) {
-            profileData = dbProfile;
+          return true;
+        } else {
+          // Token is invalid, try to refresh
+          const newTokens = await authService.refreshAccessToken();
+          
+          if (newTokens) {
+            set({
+              isAuthenticated: true,
+              user: storedSession.user,
+              tokens: newTokens,
+              error: null,
+            });
+
+            return true;
+          } else {
+            // Refresh failed, clear session
+            await authService.clearSession();
+            return false;
           }
         }
-
-        set({
-          isAuthenticated: true,
-          user,
-          profile: {
-            first_name: profileData.first_name,
-            last_name: profileData.last_name,
-            email: user.email || profileData.email || "",
-            avatar_url: profileData.avatar_url,
-          },
-        });
-
-        return true;
-      }
-
-      // Si no hay sesión en AsyncStorage o no es válida, verificar con Supabase
-      const session = await authService.getSession();
-
-      if (session?.user) {
-        const user = session.user;
-        const userData = user.user_metadata as ProfileState;
-
-        set({
-          isAuthenticated: true,
-          user,
-          profile: {
-            first_name: userData.first_name,
-            last_name: userData.last_name,
-            email: user.email || "",
-            avatar_url: userData.avatar_url,
-          },
-        });
-
-        return true;
       }
 
       return false;
     } catch (error) {
       console.error("Error restoring session:", error);
+      await authService.clearSession();
       return false;
     }
   },
 
-  login: async (email, password) => {
-    set({ isLoading: true, error: null });
+  login: async (username, password) => {
+    set({  error: null });
     try {
-      const { user, error } = await authService.signIn(email, password);
+      const response = await authService.signIn(username, password);
 
-      if (error) {
-        set({ error: error.message, isLoading: false });
-        return false;
-      }
-
-      if (user) {
-        const userData = user.user_metadata as ProfileState;
-        const dbProfile = await authService.getProfile(user?.id || "");
-
-        if (dbProfile) {
-          userData.avatar_url = dbProfile.avatar_url;
-        }
+      if (response.success && response.data) {
+        const { user, tokens } = response.data;
 
         set({
           isAuthenticated: true,
           user,
-          profile: {
-            first_name: userData.first_name,
-            last_name: userData.last_name,
-            email: user.email || userData.email || "",
-            avatar_url: userData.avatar_url,
-          },
+          tokens,
+          error: null,
         });
+        
         return true;
+      } else {
+        const errorMessage = response.error?.message || 'Error de inicio de sesión';
+        set({ error: errorMessage, isLoading: false });
+        return false;
       }
-
-      return false;
     } catch (err) {
       const error = err as Error;
-      set({ error: error.message });
+      set({ error: error.message, isLoading: false });
       return false;
     } finally {
       set({ isLoading: false });
     }
   },
 
-  register: async (email, password, profile, avatar) => {
-    // set({ isLoading: true, error: null });
+  register: async (email, password, firstName, lastName, avatar) => {
+    set({  error: null });
     try {
-      const { user, error } = await authService.signUp(
+      const response = await authService.signUp(
         email,
         password,
-        {
-          email,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          avatar_url: profile.avatar_url,
-        },
+        firstName,
+        lastName,
         avatar
       );
 
-      if (error) {
-        console.log('register authStore error', error);
-        set({ error: error.message, isLoading: false });
-        return false;
-      }
+      if (response.success && response.data) {
+        const { user, tokens } = response.data;
 
-      const dbProfile = await authService.getProfile(user?.id || "");
-
-      if (dbProfile) {
-        profile.avatar_url = dbProfile.avatar_url;
-      }
-
-      if (user) {
         set({
           isAuthenticated: true,
           user,
-          profile,
+          tokens,
+          error: null,
         });
+        
         return true;
+      } else {
+        const errorMessage = response.error?.message || 'Error en el registro';
+        set({ error: errorMessage, isLoading: false });
+        return false;
       }
-
-      return false;
     } catch (err) {
       const error = err as Error;
-      set({ error: error.message });
+      set({ error: error.message, isLoading: false });
       return false;
     } finally {
-      // set({ isLoading: false });
+      set({ isLoading: false });
     }
   },
 
@@ -212,10 +201,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({
         isAuthenticated: false,
         user: null,
-        profile: null,
+        tokens: null,
+        error: null,
       });
     } catch (error) {
       console.error("Error logging out:", error);
+      // Even if logout API call fails, clear local session
+      set({
+        isAuthenticated: false,
+        user: null,
+        tokens: null,
+        error: null,
+      });
     } finally {
       set({ isLoading: false });
     }
@@ -224,10 +221,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
   
+  updateUserData: (user) => {
+    set((state) => ({
+      ...state,
+      user
+    }));
+  },
+
   updateProfile: (profileData) => {
     set((state) => ({
       ...state,
-      profile: profileData
+      user: state.user ? {
+        ...state.user,
+        firstName: profileData.first_name,
+        lastName: profileData.last_name,
+        email: profileData.email,
+        avatarUrl: profileData.avatar_url,
+      } : null
     }));
   },
 }));

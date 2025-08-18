@@ -1,4 +1,4 @@
-import { ImageFile } from '@/app/components/ImagePickerModal';
+import { ImageFile } from '@/app/types/auth';
 import { LoadingScreen } from '@/app/components/LoadingScreen';
 import { useAuthStore } from '@/app/store/authStore';
 import React, { createContext, useContext } from 'react';
@@ -6,17 +6,13 @@ import React, { createContext, useContext } from 'react';
 type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   register: (
     email: string,
     password: string,
-    profile: {
-      first_name: string;
-      last_name: string;
-      email: string;
-      avatar_url?: string;
-    },
+    firstName: string,
+    lastName: string,
     avatar?: ImageFile | null
   ) => Promise<boolean>;
 };

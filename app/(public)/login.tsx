@@ -2,7 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Formik } from 'formik';
 import React, { useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { 
+  Alert, 
+  Image, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView, 
+  StyleSheet, 
+  TouchableOpacity, 
+  View 
+} from 'react-native';
 import * as Yup from 'yup';
 
 import { useAuth } from '@/app/components/AuthContext';
@@ -14,6 +23,7 @@ import { ThemedView } from '@/app/components/ThemedView';
 import { Strings } from '@/app/constants/Strings';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { useThemedAsset } from '@/app/hooks/useThemedAsset';
+import { useAuthStore } from '@/app/store/authStore';
 
 // Placeholder para los logos hasta que el usuario los coloque
 const logoLight = require('@/assets/images/icon-light.png');
@@ -21,30 +31,34 @@ const logoDark = require('@/assets/images/icon-dark.png');
 
 // Esquema de validación con Yup
 const LoginSchema = Yup.object().shape({
-  email: Yup.string()
-    .email(Strings.auth.validation.emailInvalid)
-    .required(Strings.auth.validation.emailRequired),
+  username: Yup.string()
+    .required('El usuario es requerido'),
   password: Yup.string()
-    .min(6, Strings.auth.validation.passwordMin)
-    .required(Strings.auth.validation.passwordRequired),
+    .min(6, 'La contraseña debe tener al menos 6 caracteres')
+    .required('La contraseña es requerida'),
 });
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
+  const { error, clearError } = useAuthStore();
   const logo = useThemedAsset(logoLight, logoDark);
   const iconColor = useThemeColor({}, 'icon');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (values: { email: string; password: string }) => {
+  const handleLogin = async (values: { username: string; password: string }) => {
     setIsLoading(true);
+    clearError(); // Clear any previous errors
     
     try {
-      const success = await login(values.email, values.password);
+      const success = await login(values.username, values.password);
       
       if (!success) {
-        Alert.alert(Strings.common.error, Strings.auth.errors.loginFailed);
+        // Error message will be set by the auth store
+        const errorMessage = error || Strings.auth.errors.loginFailed;
+        Alert.alert(Strings.common.error, errorMessage);
       }
+      // If successful, navigation will happen automatically via auth state change
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert(Strings.common.error, Strings.auth.errors.loginFailed);
@@ -64,11 +78,17 @@ export default function LoginScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
         <View style={styles.logoContainer}>
           <Image source={logo} style={styles.logo} resizeMode="contain" />
         </View>
@@ -78,20 +98,20 @@ export default function LoginScreen() {
         </ThemedText>
         
         <Formik
-          initialValues={{ email: '', password: '' }}
+          initialValues={{ username: '', password: '' }}
           validationSchema={LoginSchema}
           onSubmit={handleLogin}
         >
           {(formikProps) => (
             <View style={styles.formContainer}>
               <FormField
-                label="Email"
-                formikKey="email"
+                label="Usuario"
+                formikKey="username"
                 formikProps={formikProps}
-                placeholder={Strings.auth.login.emailPlaceholder}
-                keyboardType="email-address"
+                placeholder="Ingresa tu usuario"
+                keyboardType="default"
                 autoCapitalize="none"
-                leftIcon={<Ionicons name="mail-outline" size={20} color={iconColor} />}
+                leftIcon={<Ionicons name="person-outline" size={20} color={iconColor} />}
                 editable={!isLoading}
               />
               
@@ -135,13 +155,17 @@ export default function LoginScreen() {
         </View>
         
         <TermsText onTermsPress={() => Alert.alert('Términos', 'Aquí se mostrarían los términos y condiciones.')} />
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
     flex: 1,
   },
   scrollContent: {

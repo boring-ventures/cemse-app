@@ -70,11 +70,13 @@ export default function EditProfileScreen() {
       
       // Update profile in database
       console.log('Updating profile in database with avatar:', avatarUrl);
-      const { error } = await authService.updateProfile(user.id, {
-        first_name: values.firstName,
-        last_name: values.lastName,
-        avatar_url: avatarUrl,
+      const response = await authService.updateProfile({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        avatarUrl: avatarUrl,
       });
+
+      const error = response.error;
       
       if (error) {
         throw new Error(error.message);
