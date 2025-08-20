@@ -67,6 +67,12 @@ export default function ProfileScreen() {
             style={styles.actionButton}
           />
           <ThemedButton
+            title="Gestionar CV"
+            onPress={() => router.push('/cv' as any)}
+            type="outline"
+            style={styles.actionButton}
+          />
+          <ThemedButton
             title="Cerrar Sesión"
             onPress={handleLogout}
             loading={isLoading}
