@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm run lint)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:docs.expo.dev)",
+      "Bash(npx expo install:*)"
     ],
     "deny": [],
     "ask": [],
