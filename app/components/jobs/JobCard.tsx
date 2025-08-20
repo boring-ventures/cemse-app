@@ -1,13 +1,16 @@
 import { useThemeColor } from '@/app/hooks/useThemeColor';
-import { JobOffer } from '@/app/types/jobs';
+import { useApplicationStatus } from '@/app/hooks/useApplicationStatus';
+import { useToast, toastMessages } from '@/app/hooks/useToast';
+import { JobOffer, mapExperienceLevelToSpanish, mapApplicationStatusToSpanish } from '@/app/types/jobs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { ThemedButton } from '../ThemedButton';
 import { ThemedText } from '../ThemedText';
 import { SkillTag } from './SkillTag';
 import { StatusBadge } from './StatusBadge';
+import Shimmer from '../Shimmer';
 
 interface JobCardProps {
   job: JobOffer;
@@ -28,6 +31,26 @@ export const JobCard: React.FC<JobCardProps> = ({
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const iconColor = useThemeColor({}, 'tint');
 
+  const { applicationStatus, checkApplicationStatus, cancelApplication } = useApplicationStatus();
+  const { toast } = useToast();
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+
+  // Check application status on component mount
+  useEffect(() => {
+    const checkStatus = async () => {
+      setIsCheckingStatus(true);
+      try {
+        await checkApplicationStatus(job.id);
+      } catch (error) {
+        console.error('Error checking application status:', error);
+      } finally {
+        setIsCheckingStatus(false);
+      }
+    };
+
+    checkStatus();
+  }, [job.id, checkApplicationStatus]);
+
   const handleFavoritePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onFavoritePress?.();
@@ -36,6 +59,46 @@ export const JobCard: React.FC<JobCardProps> = ({
   const handleApplyPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onApplyPress?.();
+  };
+
+  const handleCancelApplication = () => {
+    if (!applicationStatus.application?.id) return;
+
+    Alert.alert(
+      '¿Cancelar aplicación?',
+      'Esta acción no se puede deshacer. ¿Estás seguro de que quieres cancelar tu aplicación?',
+      [
+        { text: 'No, mantener', style: 'cancel' },
+        {
+          text: 'Sí, cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await cancelApplication(applicationStatus.application!.id);
+              if (success) {
+                toast(toastMessages.applicationCancelled);
+              } else {
+                toast(toastMessages.applicationError);
+              }
+            } catch (error) {
+              console.error('Error canceling application:', error);
+              toast(toastMessages.applicationError);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const getApplicationStatusColor = (status: string) => {
+    switch (status) {
+      case 'SENT': return '#007AFF';
+      case 'UNDER_REVIEW': return '#FF9500';
+      case 'PRE_SELECTED': return '#FF6B35';
+      case 'REJECTED': return '#FF453A';
+      case 'HIRED': return '#32D74B';
+      default: return '#8E8E93';
+    }
   };
 
   const renderStars = (rating: number) => {
@@ -90,7 +153,7 @@ export const JobCard: React.FC<JobCardProps> = ({
           
           <View style={styles.companyInfo}>
             <ThemedText style={[styles.companyName, { color: textColor }]}>
-              {job.company}
+              {job.company?.name || 'Sin especificar'}
             </ThemedText>
             <View style={styles.rating}>
               <View style={styles.stars}>
@@ -119,7 +182,7 @@ export const JobCard: React.FC<JobCardProps> = ({
       {/* Job type and experience tags */}
       <View style={styles.badges}>
         <StatusBadge status={job.jobType} size="small" />
-        <StatusBadge status={job.experienceLevel} size="small" />
+        <StatusBadge status={mapExperienceLevelToSpanish(job.experienceLevel) as any} size="small" />
       </View>
 
       {/* Technical skills */}
@@ -163,13 +226,43 @@ export const JobCard: React.FC<JobCardProps> = ({
         </View>
       </View>
 
-      {/* Apply button */}
-      <ThemedButton
-        title="Aplicar ahora"
-        onPress={handleApplyPress}
-        style={styles.applyButton}
-        type="primary"
-      />
+      {/* Dynamic Apply Button */}
+      {isCheckingStatus || applicationStatus.loading ? (
+        <Shimmer>
+          <View style={[styles.applyButtonSkeleton, { backgroundColor: iconColor + '30' }]} />
+        </Shimmer>
+      ) : applicationStatus.hasApplied && applicationStatus.application ? (
+        <View style={styles.appliedSection}>
+          <View style={styles.statusContainer}>
+            <View style={[
+              styles.statusBadge, 
+              { backgroundColor: getApplicationStatusColor(applicationStatus.application.status) }
+            ]}>
+              <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+              <ThemedText style={styles.statusText}>
+                {mapApplicationStatusToSpanish(applicationStatus.application.status)}
+              </ThemedText>
+            </View>
+            <ThemedText style={[styles.applicationDate, { color: secondaryTextColor }]}>
+              Aplicaste el {applicationStatus.application.applicationDate}
+            </ThemedText>
+          </View>
+          <ThemedButton
+            title="Cancelar aplicación"
+            onPress={handleCancelApplication}
+            style={styles.cancelButton}
+            type="outline"
+            leftIcon={<Ionicons name="close-circle-outline" size={16} color={iconColor} />}
+          />
+        </View>
+      ) : (
+        <ThemedButton
+          title="Aplicar ahora"
+          onPress={handleApplyPress}
+          style={styles.applyButton}
+          type="primary"
+        />
+      )}
     </TouchableOpacity>
   );
 };
@@ -304,5 +397,37 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     minHeight: 44,
+  },
+  appliedSection: {
+    gap: 12,
+  },
+  statusContainer: {
+    gap: 6,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  applicationDate: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  cancelButton: {
+    minHeight: 44,
+  },
+  applyButtonSkeleton: {
+    height: 44,
+    borderRadius: 8,
+    width: '100%',
   },
 }); 

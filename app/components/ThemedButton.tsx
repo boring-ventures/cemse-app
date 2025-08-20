@@ -5,7 +5,9 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    TouchableOpacityProps
+    TouchableOpacityProps,
+    View,
+    TextStyle
 } from 'react-native';
 
 type ButtonType = 'primary' | 'secondary' | 'outline' | 'text';
@@ -18,6 +20,8 @@ export type ThemedButtonProps = TouchableOpacityProps & {
   loading?: boolean;
   light?: string;
   dark?: string;
+  leftIcon?: React.ReactElement;
+  textStyle?: TextStyle | TextStyle[];
 };
 
 export function ThemedButton(props: ThemedButtonProps) {
@@ -30,6 +34,8 @@ export function ThemedButton(props: ThemedButtonProps) {
     dark, 
     loading = false,
     disabled,
+    leftIcon,
+    textStyle,
     ...otherProps 
   } = props;
   
@@ -74,36 +80,41 @@ export function ThemedButton(props: ThemedButtonProps) {
     }
   };
   
-  const getTextStyle = () => {
-    let baseStyle = {
+  const getTextStyle = (): TextStyle | TextStyle[] => {
+    let baseStyle: TextStyle = {
       ...styles.text,
       ...textSizeStyles[size],
     };
     
+    let colorStyle: TextStyle;
     switch (type) {
       case 'primary':
-        return {
-          ...baseStyle,
-          color: textColor,
-        };
+        colorStyle = { color: textColor };
+        break;
       case 'secondary':
-        return {
-          ...baseStyle,
-          color: textColor,
-        };
+        colorStyle = { color: textColor };
+        break;
       case 'outline':
-        return {
-          ...baseStyle,
-          color: borderColor,
-        };
+        colorStyle = { color: borderColor };
+        break;
       case 'text':
-        return {
-          ...baseStyle,
-          color: textColor,
-        };
+        colorStyle = { color: textColor };
+        break;
       default:
-        return baseStyle;
+        colorStyle = {};
     }
+    
+    // Merge base styles, color styles, and custom textStyle
+    const finalStyle: TextStyle[] = [baseStyle, colorStyle];
+    if (textStyle) {
+      if (Array.isArray(textStyle)) {
+        finalStyle.push(...textStyle);
+      } else {
+        finalStyle.push(textStyle);
+      }
+    }
+    
+    return finalStyle;
   };
 
   return (
@@ -115,7 +126,10 @@ export function ThemedButton(props: ThemedButtonProps) {
       {loading ? (
         <ActivityIndicator color={type === 'primary' ? textColor : borderColor} />
       ) : (
-        <Text style={getTextStyle()}>{title}</Text>
+        <View style={styles.content}>
+          {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
+          <Text style={getTextStyle()}>{title}</Text>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -126,6 +140,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leftIcon: {
+    marginRight: 8,
   },
   text: {
     fontWeight: '600',

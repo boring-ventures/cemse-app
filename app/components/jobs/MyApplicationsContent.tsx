@@ -1,13 +1,17 @@
 import { FormField } from '@/app/components/FormField';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
-import { JobApplication, JobsMetric } from '@/app/types/jobs';
+import { useApplications } from '@/app/hooks/useApplications';
+import { JobApplication, JobsMetric, mapApplicationStatusToSpanish } from '@/app/types/jobs';
 import { Ionicons } from '@expo/vector-icons';
 import { FormikProps, useFormik } from 'formik';
-import React, { useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { ThemedView } from '../ThemedView';
+import { ThemedButton } from '../ThemedButton';
 import { ApplicationCard } from './ApplicationCard';
+import { useRouter } from 'expo-router';
+import Shimmer from '../Shimmer';
 
 interface MyApplicationsContentProps {
   isRefreshing: boolean;
@@ -49,118 +53,168 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
   isRefreshing,
   onRefresh
 }) => {
+  const router = useRouter();
   const [filterBy, setFilterBy] = useState('Todos los estados');
   const [companyFilter, setCompanyFilter] = useState('Filtrar por empresa...');
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const iconColor = useThemeColor({}, 'tint');
+  const cardBackgroundColor = useThemeColor({}, 'card');
+  const borderColor = useThemeColor({}, 'border');
 
-  // Mock search form
+  const { applications, loading, error, refreshApplications, withdrawApplication } = useApplications();
+
+  // Search form
   const searchForm = useFormik({
     initialValues: { search: '' },
     onSubmit: (values) => {
+      // TODO: Implement search filtering
       console.log('Search:', values.search);
     },
   });
 
-  // Mock metrics data
-  const metrics: JobsMetric[] = [
-    {
-      id: 'total',
-      title: 'Total',
-      value: 4,
-      icon: 'briefcase-outline',
-    },
-    {
-      id: 'sent',
-      title: 'Enviadas',
-      value: 1,
-      icon: 'send-outline',
-    },
-    {
-      id: 'review',
-      title: 'En revisión',
-      value: 1,
-      icon: 'time-outline',
-    },
-    {
-      id: 'preselected',
-      title: 'Preseleccionado',
-      value: 1,
-      icon: 'checkmark-circle-outline',
-    },
-    {
-      id: 'rejected',
-      title: 'Rechazadas',
-      value: 1,
-      icon: 'close-circle-outline',
-    },
-    {
-      id: 'interview',
-      title: 'Entrevista programada',
-      value: 0,
-      icon: 'calendar-outline',
-    },
-    {
-      id: 'offer',
-      title: 'Oferta recibida',
-      value: 0,
-      icon: 'gift-outline',
-    },
-  ];
+  // Handle external refresh
+  useEffect(() => {
+    if (isRefreshing) {
+      refreshApplications().finally(() => {
+        onRefresh();
+      });
+    }
+  }, [isRefreshing]);
 
-  // Mock applications data
-  const applications: JobApplication[] = [
-    {
-      id: '1',
-      jobId: '1',
-      jobTitle: 'Desarrollador Frontend React',
-      company: 'TechCorp Bolivia',
-      applicationDate: '29 jun 2025',
-      lastUpdate: '29 jun 2025',
-      status: 'Enviada',
-      coverLetter: 'Estimados señores, me interesa mucho esta posición...',
-      cvAttached: true,
-    },
-    {
-      id: '2',
-      jobId: '2',
-      jobTitle: 'Asistente Contable',
-      company: 'Zenith Health',
-      applicationDate: '25 jun 2025',
-      lastUpdate: '2 jul 2025',
-      status: 'En revisión',
-      rating: 4,
-      coverLetter: 'Me complace postular para esta posición...',
-      cvAttached: true,
-    },
-    {
-      id: '3',
-      jobId: '3',
-      jobTitle: 'Asistente de Marketing',
-      company: 'Mindful Co.',
-      applicationDate: '20 jun 2025',
-      lastUpdate: '28 jun 2025',
-      status: 'Preseleccionado',
-      rating: 5,
-      employerNotes: 'Candidato con buen potencial creativo',
-      coverLetter: 'Su oferta de trabajo me resulta muy atractiva...',
-      cvAttached: true,
-    },
-    {
-      id: '4',
-      jobId: '4',
-      jobTitle: 'Especialista en Ventas',
-      company: 'Premium Services',
-      applicationDate: '15 jun 2025',
-      lastUpdate: '18 jun 2025',
-      status: 'Rechazada',
-      employerNotes: 'No cumple con los requisitos mínimos de experiencia',
-      coverLetter: 'Me dirijo a ustedes para expresar mi interés...',
-      cvAttached: true,
-    },
-  ];
+  // Calculate metrics from real applications data
+  const calculateMetrics = (): JobsMetric[] => {
+    const total = applications.length;
+    const sent = applications.filter(app => mapApplicationStatusToSpanish(app.status) === 'Enviada').length;
+    const review = applications.filter(app => mapApplicationStatusToSpanish(app.status) === 'En revisión').length;
+    const preselected = applications.filter(app => mapApplicationStatusToSpanish(app.status) === 'Preseleccionado').length;
+    const rejected = applications.filter(app => mapApplicationStatusToSpanish(app.status) === 'Rechazada').length;
+    const interview = applications.filter(app => mapApplicationStatusToSpanish(app.status) === 'Entrevista programada').length;
+    const offer = applications.filter(app => mapApplicationStatusToSpanish(app.status) === 'Oferta recibida').length;
+
+    return [
+      {
+        id: 'total',
+        title: 'Total',
+        value: total,
+        icon: 'briefcase-outline',
+      },
+      {
+        id: 'sent',
+        title: 'Enviadas',
+        value: sent,
+        icon: 'send-outline',
+      },
+      {
+        id: 'review',
+        title: 'En revisión',
+        value: review,
+        icon: 'time-outline',
+      },
+      {
+        id: 'preselected',
+        title: 'Preseleccionado',
+        value: preselected,
+        icon: 'checkmark-circle-outline',
+      },
+      {
+        id: 'rejected',
+        title: 'Rechazadas',
+        value: rejected,
+        icon: 'close-circle-outline',
+      },
+      {
+        id: 'interview',
+        title: 'Entrevista programada',
+        value: interview,
+        icon: 'calendar-outline',
+      },
+      {
+        id: 'offer',
+        title: 'Oferta recibida',
+        value: offer,
+        icon: 'gift-outline',
+      },
+    ];
+  };
+
+  const metrics = calculateMetrics();
+
+  // Application Card Skeleton Component
+  const ApplicationCardSkeleton = () => (
+    <Shimmer>
+      <View style={[styles.applicationCardSkeleton, { backgroundColor: cardBackgroundColor, borderColor }]}>
+        {/* Header skeleton */}
+        <View style={styles.skeletonHeader}>
+          <View style={[styles.skeletonJobIcon, { backgroundColor: iconColor + '20' }]} />
+          <View style={styles.skeletonJobInfo}>
+            <View style={[styles.skeletonJobTitle, { backgroundColor: secondaryTextColor + '30' }]} />
+            <View style={[styles.skeletonCompanyName, { backgroundColor: secondaryTextColor + '30' }]} />
+            <View style={[styles.skeletonLocation, { backgroundColor: secondaryTextColor + '30' }]} />
+          </View>
+          <View style={[styles.skeletonStatus, { backgroundColor: secondaryTextColor + '30' }]} />
+        </View>
+        
+        {/* Meta info skeleton */}
+        <View style={styles.skeletonMeta}>
+          <View style={[styles.skeletonDate, { backgroundColor: secondaryTextColor + '30' }]} />
+          <View style={[styles.skeletonSalary, { backgroundColor: secondaryTextColor + '30' }]} />
+        </View>
+        
+        {/* Actions skeleton */}
+        <View style={styles.skeletonActions}>
+          {[1, 2, 3].map((index) => (
+            <View key={index} style={[styles.skeletonAction, { backgroundColor: secondaryTextColor + '30' }]} />
+          ))}
+        </View>
+      </View>
+    </Shimmer>
+  );
+
+  const handleWithdrawApplication = async (applicationId: string) => {
+    Alert.alert(
+      'Retirar aplicación',
+      '¿Estás seguro que deseas retirar esta aplicación? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Retirar', 
+          style: 'destructive',
+          onPress: async () => {
+            const success = await withdrawApplication(applicationId);
+            if (success) {
+              Alert.alert('Éxito', 'Aplicación retirada exitosamente');
+            } else {
+              Alert.alert('Error', 'No se pudo retirar la aplicación. Intenta nuevamente.');
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  if (error) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#FF453A" />
+          <ThemedText style={[styles.errorTitle, { color: textColor }]}>
+            Error al cargar aplicaciones
+          </ThemedText>
+          <ThemedText style={[styles.errorDescription, { color: secondaryTextColor }]}>
+            {error.message}
+          </ThemedText>
+          <ThemedButton
+            title="Reintentar"
+            onPress={refreshApplications}
+            type="primary"
+            style={styles.retryButton}
+          />
+        </View>
+      </ThemedView>
+    );
+  }
 
   const statusOptions = [
     'Todos los estados',
@@ -180,7 +234,7 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
         style={styles.scrollView}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing}
+            refreshing={isRefreshing || loading}
             onRefresh={onRefresh}
             tintColor={iconColor}
             colors={[iconColor]}
@@ -259,21 +313,43 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
         {/* Applications List */}
         <View style={styles.applicationsSection}>
           <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-            {applications.length} aplicaciones
+            {loading ? "Cargando aplicaciones..." : `${applications.length} aplicaciones`}
           </ThemedText>
 
-          {applications.map((application) => (
-            <ApplicationCard
-              key={application.id}
-              application={application}
-              onPress={() => console.log('Application pressed:', application.id)}
-              onViewJob={() => console.log('View job:', application.jobId)}
-              onViewCV={() => console.log('View CV:', application.id)}
-              onWithdraw={() => console.log('Withdraw application:', application.id)}
-              onViewDetails={() => console.log('View interview details:', application.id)}
-              onRespond={() => console.log('Respond to offer:', application.id)}
-            />
-          ))}
+          {loading ? (
+            // Show skeleton application cards while loading
+            <>            
+              {[1, 2, 3, 4, 5].map((index) => (
+                <ApplicationCardSkeleton key={`skeleton-${index}`} />
+              ))}
+            </>
+          ) : applications.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIconContainer, { backgroundColor: iconColor + '20' }]}>
+                <Ionicons name="briefcase-outline" size={48} color={iconColor} />
+              </View>
+              <ThemedText style={[styles.emptyTitle, { color: textColor }]}>
+                No tienes aplicaciones aún
+              </ThemedText>
+              <ThemedText style={[styles.emptyDescription, { color: secondaryTextColor }]}>
+                Cuando apliques a empleos, aparecerán aquí para que puedas dar seguimiento.
+              </ThemedText>
+            </View>
+          ) : (
+            applications.map((application) => (
+              <ApplicationCard
+                key={application.id}
+                application={application}
+                onPress={() => console.log('Application pressed:', application.id)}
+                onViewJob={() => router.push(`/jobs/job-detail?id=${application.jobId}`)}
+                onViewCV={() => console.log('View CV:', application.id)}
+                onWithdraw={() => handleWithdrawApplication(application.id)}
+                onViewDetails={() => console.log('View interview details:', application.id)}
+                onRespond={() => console.log('Respond to offer:', application.id)}
+                onChat={() => router.push(`/jobs/chat?applicationId=${application.id}&jobTitle=${encodeURIComponent(application.jobTitle)}&company=${encodeURIComponent(application.company)}` as any)}
+              />
+            ))
+          )}
         </View>
 
         <View style={styles.bottomSpacing} />
@@ -378,5 +454,122 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorDescription: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  retryButton: {
+    minWidth: 120,
+  },
+  // Application Card Skeleton Styles
+  applicationCardSkeleton: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  skeletonJobIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+  },
+  skeletonJobInfo: {
+    flex: 1,
+    gap: 6,
+  },
+  skeletonJobTitle: {
+    height: 18,
+    width: '70%',
+    borderRadius: 4,
+  },
+  skeletonCompanyName: {
+    height: 14,
+    width: '50%',
+    borderRadius: 4,
+  },
+  skeletonLocation: {
+    height: 12,
+    width: '60%',
+    borderRadius: 4,
+  },
+  skeletonStatus: {
+    height: 24,
+    width: 80,
+    borderRadius: 12,
+  },
+  skeletonMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  skeletonDate: {
+    height: 12,
+    width: '30%',
+    borderRadius: 4,
+  },
+  skeletonSalary: {
+    height: 12,
+    width: '25%',
+    borderRadius: 4,
+  },
+  skeletonActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  skeletonAction: {
+    height: 32,
+    flex: 1,
+    borderRadius: 6,
   },
 }); 

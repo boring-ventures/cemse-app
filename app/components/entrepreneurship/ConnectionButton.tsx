@@ -30,7 +30,7 @@ export const ConnectionButton: React.FC<ConnectionButtonProps> = ({
   const backgroundColor = useThemeColor({}, 'card');
   const borderColor = useThemeColor({}, 'border');
 
-  const handlePress = (action: () => void | undefined) => {
+  const handlePress = (action?: () => void) => {
     if (action) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       action();

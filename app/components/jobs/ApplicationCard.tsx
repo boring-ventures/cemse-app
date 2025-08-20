@@ -1,5 +1,5 @@
 import { useThemeColor } from '@/app/hooks/useThemeColor';
-import { JobApplication } from '@/app/types/jobs';
+import { JobApplication, mapApplicationStatusToSpanish } from '@/app/types/jobs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React from 'react';
@@ -16,6 +16,7 @@ interface ApplicationCardProps {
   onWithdraw?: () => void;
   onViewDetails?: () => void;
   onRespond?: () => void;
+  onChat?: () => void;
 }
 
 export const ApplicationCard: React.FC<ApplicationCardProps> = ({
@@ -25,7 +26,8 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   onViewCV,
   onWithdraw,
   onViewDetails,
-  onRespond
+  onRespond,
+  onChat
 }) => {
   const backgroundColor = useThemeColor({}, 'card');
   const borderColor = useThemeColor({}, 'border');
@@ -58,6 +60,11 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
     onRespond?.();
   };
 
+  const handleChat = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onChat?.();
+  };
+
   const renderStars = (rating: number) => {
     const stars = [];
     for (let i = 0; i < rating; i++) {
@@ -69,7 +76,8 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   };
 
   const getStatusActions = () => {
-    switch (application.status) {
+    const spanishStatus = mapApplicationStatusToSpanish(application.status);
+    switch (spanishStatus) {
       case 'Enviada':
         return (
           <View style={styles.actions}>
@@ -81,10 +89,10 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
               size="small"
             />
             <ThemedButton
-              title="Ver CV"
-              onPress={handleViewCV}
+              title="Chat"
+              onPress={handleChat}
               style={styles.actionButton}
-              type="outline"
+              type="primary"
               size="small"
             />
             <ThemedButton
@@ -96,7 +104,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
             />
           </View>
         );
-      case 'Entrevista programada':
+      case 'En revisión':
         return (
           <View style={styles.actions}>
             <ThemedButton
@@ -107,17 +115,48 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
               size="small"
             />
             <ThemedButton
-              title="Ver CV"
-              onPress={handleViewCV}
+              title="Chat"
+              onPress={handleChat}
+              style={styles.actionButton}
+              type="primary"
+              size="small"
+            />
+          </View>
+        );
+      case 'Preseleccionado':
+        return (
+          <View style={styles.actions}>
+            <ThemedButton
+              title="Ver oferta"
+              onPress={handleViewJob}
               style={styles.actionButton}
               type="outline"
               size="small"
             />
             <ThemedButton
+              title="Chat"
+              onPress={handleChat}
+              style={styles.actionButton}
+              type="primary"
+              size="small"
+            />
+          </View>
+        );
+      case 'Entrevista programada':
+        return (
+          <View style={styles.actions}>
+            <ThemedButton
               title="Ver detalles"
               onPress={handleViewDetails}
               style={styles.actionButton}
               type="primary"
+              size="small"
+            />
+            <ThemedButton
+              title="Chat"
+              onPress={handleChat}
+              style={styles.actionButton}
+              type="outline"
               size="small"
             />
           </View>
@@ -126,24 +165,17 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
         return (
           <View style={styles.actions}>
             <ThemedButton
-              title="Ver oferta"
-              onPress={handleViewJob}
-              style={styles.actionButton}
-              type="outline"
-              size="small"
-            />
-            <ThemedButton
-              title="Ver CV"
-              onPress={handleViewCV}
-              style={styles.actionButton}
-              type="outline"
-              size="small"
-            />
-            <ThemedButton
               title="Responder"
               onPress={handleRespond}
               style={styles.actionButton}
               type="primary"
+              size="small"
+            />
+            <ThemedButton
+              title="Chat"
+              onPress={handleChat}
+              style={styles.actionButton}
+              type="outline"
               size="small"
             />
           </View>
@@ -178,7 +210,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
     >
       {/* Header with status */}
       <View style={styles.header}>
-        <StatusBadge status={application.status} />
+        <StatusBadge status={mapApplicationStatusToSpanish(application.status) as any} />
         <View style={[styles.companyLogo, { backgroundColor: iconColor + '20' }]}>
           <Ionicons name="briefcase-outline" size={24} color={iconColor} />
         </View>
@@ -220,7 +252,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
       </View>
 
       {/* Special status information */}
-      {application.status === 'Entrevista programada' && application.interviewDate && (
+      {mapApplicationStatusToSpanish(application.status) === 'Entrevista programada' && application.interviewDate && (
         <View style={styles.specialInfo}>
           <View style={[styles.interviewCard, { backgroundColor: '#AF52DE20' }]}>
             <Ionicons name="calendar" size={16} color="#AF52DE" />
@@ -236,7 +268,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
         </View>
       )}
 
-      {application.status === 'Oferta recibida' && application.offerAmount && (
+      {mapApplicationStatusToSpanish(application.status) === 'Oferta recibida' && application.offerAmount && (
         <View style={styles.specialInfo}>
           <View style={[styles.offerCard, { backgroundColor: '#FFD60A20' }]}>
             <Ionicons name="gift" size={16} color="#FFD60A" />
