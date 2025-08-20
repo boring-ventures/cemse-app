@@ -2,6 +2,7 @@ import { FormField } from '@/app/components/FormField';
 import { ThemedButton } from '@/app/components/ThemedButton';
 import { ThemedText } from '@/app/components/ThemedText';
 import { ThemedView } from '@/app/components/ThemedView';
+import { CVCheckModal } from '@/app/components/jobs/CVCheckModal';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { ApplicationForm, JobOffer } from '@/app/types/jobs';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,8 @@ export default function ApplyScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const router = useRouter();
   const [profileComplete, setProfileComplete] = useState(75); // Mock profile completion
+  const [showCVCheck, setShowCVCheck] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   const backgroundColor = useThemeColor({}, 'background');
   const cardBackgroundColor = useThemeColor({}, 'card');
@@ -27,23 +30,50 @@ export default function ApplyScreen() {
   const job: JobOffer = {
     id: jobId || '1',
     title: 'Desarrollador Frontend React',
-    company: 'TechCorp Bolivia',
+    company: {
+      id: '1',
+      name: 'TechCorp Bolivia',
+      rating: 4.5,
+      sector: 'Tecnología'
+    },
     companyRating: 4.5,
     location: 'Cochabamba, Bolivia',
+    municipality: 'Cochabamba',
+    department: 'Cochabamba',
     workMode: 'Híbrido',
+    workModality: 'HYBRID' as const,
+    workSchedule: 'Tiempo completo',
+    contractType: 'FULL_TIME' as const,
     description: 'Únete a nuestro equipo para desarrollar aplicaciones web modernas con React y TypeScript.',
-    requirements: [],
+    requirements: ['Experiencia en React y TypeScript'],
+    skillsRequired: ['React', 'JavaScript', 'TypeScript', 'HTML'],
+    desiredSkills: [],
     skills: ['React', 'JavaScript', 'TypeScript', 'HTML'],
-    experienceLevel: 'Intermedio',
+    experienceLevel: 'MID_LEVEL' as const,
     jobType: 'Tiempo completo',
     salaryMin: 3500,
     salaryMax: 4500,
+    salaryCurrency: 'Bs.',
     currency: 'Bs.',
     publishedDate: 'Hace 2 días',
+    publishedAt: new Date().toISOString(),
     applicantCount: 47,
+    applicationsCount: 47,
     viewCount: 234,
+    viewsCount: 234,
     isFeatured: true,
+    featured: true,
     isFavorite: false,
+    isActive: true,
+    status: 'ACTIVE' as const,
+    companyId: '1',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const handleDocumentsReady = () => {
+    setShowCVCheck(false);
+    // In a real app, refresh document status here
   };
 
   const applicationForm = useFormik<ApplicationForm>({
@@ -56,6 +86,7 @@ export default function ApplyScreen() {
       salaryExpectation: undefined,
     },
     onSubmit: async (values) => {
+      setSubmitting(true);
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         
@@ -79,6 +110,8 @@ export default function ApplyScreen() {
         );
       } catch (error) {
         Alert.alert('Error', 'Hubo un problema al enviar tu aplicación. Intenta nuevamente.');
+      } finally {
+        setSubmitting(false);
       }
     },
   });
@@ -126,7 +159,7 @@ export default function ApplyScreen() {
                 {job.title}
               </ThemedText>
               <ThemedText style={[styles.jobSummaryCompany, { color: textColor }]}>
-                {job.company}
+                {job.company?.name || 'Sin especificar'}
               </ThemedText>
               <ThemedText style={[styles.jobSummaryDetails, { color: secondaryTextColor }]}>
                 {job.location} • {job.currency} {job.salaryMin}-{job.salaryMax}
@@ -304,10 +337,12 @@ export default function ApplyScreen() {
             style={styles.draftButton}
           />
           <ThemedButton
-            title="Enviar aplicación"
-            onPress={applicationForm.handleSubmit}
+            title={submitting ? "Enviando..." : "Enviar aplicación"}
+            onPress={() => applicationForm.handleSubmit()}
             type="primary"
             style={styles.submitButton}
+            loading={submitting}
+            disabled={submitting}
           />
         </View>
         <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
@@ -316,6 +351,13 @@ export default function ApplyScreen() {
           </ThemedText>
         </TouchableOpacity>
       </View>
+
+      {/* CV Check Modal */}
+      <CVCheckModal
+        isOpen={showCVCheck}
+        onClose={() => setShowCVCheck(false)}
+        onDocumentsReady={handleDocumentsReady}
+      />
     </ThemedView>
   );
 }
@@ -544,6 +586,46 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 16,
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  questionSkeleton: {
+    marginBottom: 16,
+  },
+  skeletonQuestionText: {
+    height: 16,
+    width: '80%',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonQuestionField: {
+    height: 80,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  pickerContainer: {
+    gap: 8,
+  },
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  optionText: {
+    fontSize: 14,
     fontWeight: '500',
   },
 }); 

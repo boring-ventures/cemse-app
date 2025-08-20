@@ -1,20 +1,38 @@
 import { SkillTag } from '@/app/components/jobs/SkillTag';
 import { StatusBadge } from '@/app/components/jobs/StatusBadge';
+import { CVCheckModal } from '@/app/components/jobs/CVCheckModal';
 import { ThemedButton } from '@/app/components/ThemedButton';
 import { ThemedText } from '@/app/components/ThemedText';
 import { ThemedView } from '@/app/components/ThemedView';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
-import { JobOffer } from '@/app/types/jobs';
+import { useApplicationStatus } from '@/app/hooks/useApplicationStatus';
+import { useCVStatus } from '@/app/hooks/useCVStatus';
+import { useToast, toastMessages } from '@/app/hooks/useToast';
+import { useBookmarks } from '@/app/hooks/useBookmarks';
+import { JobOffer, mapExperienceLevelToSpanish, mapContractTypeToSpanish, mapApplicationStatusToSpanish } from '@/app/types/jobs';
+import { apiService } from '@/app/services/apiService';
+import { useAuthStore } from '@/app/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, ScrollView, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Shimmer from '@/app/components/Shimmer';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { tokens } = useAuthStore();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [job, setJob] = useState<JobOffer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showCVCheck, setShowCVCheck] = useState(false);
+
+  const { applicationStatus, checkApplicationStatus, cancelApplication } = useApplicationStatus();
+  const { hasCV, hasCoverLetter, checkCVStatus } = useCVStatus();
+  const { toast } = useToast();
+  const { isBookmarked, toggleBookmark } = useBookmarks();
   
   const backgroundColor = useThemeColor({}, 'background');
   const cardBackgroundColor = useThemeColor({}, 'card');
@@ -23,28 +41,104 @@ export default function JobDetailScreen() {
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const iconColor = useThemeColor({}, 'tint');
 
-  // Mock job data - in real app, this would come from API/store
-  const job: JobOffer = {
+  // Fetch job data and application status from API
+  useEffect(() => {
+    if (id && tokens?.token) {
+      fetchJobDetail();
+      checkApplicationStatus(id);
+      checkCVStatus();
+    }
+  }, [id, tokens?.token, checkApplicationStatus, checkCVStatus]);
+
+  const fetchJobDetail = async () => {
+    if (!id || !tokens?.token) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await apiService.getJobDetail(tokens.token, id);
+      if (response.success && response.data) {
+        // Transform API data to UI format
+        const apiJob = response.data;
+        const transformedJob: JobOffer = {
+          ...apiJob,
+          companyRating: apiJob.company?.rating || 4.0,
+          workMode: apiJob.workModality === 'ON_SITE' ? 'Presencial' : 
+                    apiJob.workModality === 'REMOTE' ? 'Remoto' : 'Híbrido',
+          skills: [...(apiJob.skillsRequired || []), ...(apiJob.desiredSkills || [])],
+          jobType: apiJob.contractType === 'FULL_TIME' ? 'Tiempo completo' :
+                   apiJob.contractType === 'PART_TIME' ? 'Medio tiempo' : 'Prácticas',
+          currency: apiJob.salaryCurrency || 'Bs.',
+          publishedDate: new Date(apiJob.publishedAt).toLocaleDateString('es-ES'),
+          applicantCount: apiJob.applicationsCount,
+          viewCount: apiJob.viewsCount,
+          isFeatured: apiJob.featured,
+          isFavorite: false, // TODO: Implement favorites
+          company: apiJob.company?.name || 'Sin especificar',
+          companySize: apiJob.company?.size,
+          industry: apiJob.company?.sector,
+          companyDescription: apiJob.company?.description,
+          responsibilities: apiJob.requirements ? [apiJob.requirements] : undefined,
+          benefits: apiJob.benefits ? [apiJob.benefits] : undefined,
+        };
+        setJob(transformedJob);
+      } else {
+        throw new Error(response.error?.message || 'Failed to fetch job details');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('Error fetching job detail:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock job data for fallback
+  const mockJob: JobOffer = {
     id: id || '1',
     title: 'Desarrollador Frontend React',
-    company: 'TechCorp Bolivia',
+    company: {
+      id: '1',
+      name: 'TechCorp Bolivia',
+      rating: 4.5,
+      sector: 'Tecnología'
+    },
     companyRating: 4.5,
     location: 'Cochabamba, Bolivia',
+    municipality: 'Cochabamba',
+    department: 'Cochabamba',
     workMode: 'Híbrido',
+    workModality: 'HYBRID' as const,
+    workSchedule: 'Tiempo completo',
+    contractType: 'FULL_TIME' as const,
     description: 'Únete a nuestro equipo para desarrollar aplicaciones web modernas con React y TypeScript. Buscamos a alguien apasionado por la tecnología y el desarrollo frontend.',
     requirements: ['2+ años de experiencia en React', 'Conocimiento en TypeScript', 'Experiencia con Git y control de versiones', 'Conocimientos básicos de testing'],
+    skillsRequired: ['React', 'JavaScript', 'TypeScript', 'HTML', 'CSS', 'Git'],
+    desiredSkills: [],
     skills: ['React', 'JavaScript', 'TypeScript', 'HTML', 'CSS', 'Git'],
-    experienceLevel: 'Intermedio',
+    experienceLevel: 'MID_LEVEL' as const,
     jobType: 'Tiempo completo',
     salaryMin: 3500,
     salaryMax: 4500,
+    salaryCurrency: 'Bs.',
     currency: 'Bs.',
     publishedDate: 'Hace 2 días',
+    publishedAt: new Date().toISOString(),
     applicationDeadline: '15 ago 2025',
     applicantCount: 47,
+    applicationsCount: 47,
     viewCount: 234,
+    viewsCount: 234,
     isFeatured: true,
+    featured: true,
     isFavorite: false,
+    isActive: true,
+    status: 'ACTIVE' as const,
+    companyId: '1',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     responsibilities: [
       'Desarrollar interfaces de usuario atractivas y funcionales',
       'Colaborar con el equipo de diseño para implementar mockups',
@@ -64,15 +158,27 @@ export default function JobDetailScreen() {
     companyDescription: 'TechCorp Bolivia es una empresa líder en desarrollo de software con más de 10 años de experiencia en el mercado boliviano. Nos especializamos en soluciones web y móviles para empresas de diversos sectores.'
   };
 
-  const handleFavoritePress = () => {
+  const handleFavoritePress = async () => {
+    if (!job) return;
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsFavorite(!isFavorite);
+    const success = await toggleBookmark(job.id);
+    if (success) {
+      const isNowBookmarked = isBookmarked(job.id);
+      toast({
+        title: isNowBookmarked ? "Empleo guardado" : "Empleo removido",
+        description: isNowBookmarked ? "El empleo ha sido guardado en tus favoritos" : "El empleo ha sido removido de tus favoritos",
+        variant: 'success'
+      });
+    } else {
+      toast(toastMessages.unexpectedError);
+    }
   };
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Mira esta oferta de trabajo: ${job.title} en ${job.company}`,
+        message: `Mira esta oferta de trabajo: ${displayJob.title} en ${displayJob.company}`,
         title: 'Oferta de Trabajo - CEMSE'
       });
     } catch (error) {
@@ -81,8 +187,64 @@ export default function JobDetailScreen() {
   };
 
   const handleApply = () => {
+    if (!job) return;
+    
+    // Check if documents are available
+    if (!hasCV && !hasCoverLetter) {
+      setShowCVCheck(true);
+      return;
+    }
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push(`/jobs/apply?jobId=${job.id}`);
+  };
+
+  const handleCancelApplication = () => {
+    if (!applicationStatus.application?.id) return;
+
+    Alert.alert(
+      '¿Cancelar aplicación?',
+      'Esta acción no se puede deshacer. ¿Estás seguro de que quieres cancelar tu aplicación?',
+      [
+        { text: 'No, mantener', style: 'cancel' },
+        {
+          text: 'Sí, cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await cancelApplication(applicationStatus.application!.id);
+              if (success) {
+                toast(toastMessages.applicationCancelled);
+              } else {
+                toast(toastMessages.applicationError);
+              }
+            } catch (error) {
+              console.error('Error canceling application:', error);
+              toast(toastMessages.applicationError);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDocumentsReady = () => {
+    setShowCVCheck(false);
+    // Proceed with application after documents are ready
+    if (job) {
+      router.push(`/jobs/apply?jobId=${job.id}`);
+    }
+  };
+
+  const getApplicationStatusColor = (status: string) => {
+    switch (status) {
+      case 'SENT': return '#007AFF';
+      case 'UNDER_REVIEW': return '#FF9500';
+      case 'PRE_SELECTED': return '#FF6B35';
+      case 'REJECTED': return '#FF453A';
+      case 'HIRED': return '#32D74B';
+      default: return '#8E8E93';
+    }
   };
 
   const handleSaveJob = () => {
@@ -105,11 +267,112 @@ export default function JobDetailScreen() {
     return stars;
   };
 
+  // Job Detail Skeleton Components
+  const JobDetailSkeleton = () => (
+    <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      {/* Header Card Skeleton */}
+      <Shimmer>
+        <View style={[styles.headerCard, { backgroundColor: cardBackgroundColor, borderColor }]}>
+          <View style={styles.headerTop}>
+            <View style={[styles.skeletonLogo, { backgroundColor: secondaryTextColor + '30' }]} />
+            <View style={[styles.skeletonFavorite, { backgroundColor: secondaryTextColor + '30' }]} />
+          </View>
+          <View style={styles.headerInfo}>
+            <View style={[styles.skeletonTitle, { backgroundColor: secondaryTextColor + '30' }]} />
+            <View style={[styles.skeletonCompany, { backgroundColor: secondaryTextColor + '30' }]} />
+            <View style={[styles.skeletonLocation, { backgroundColor: secondaryTextColor + '30' }]} />
+            <View style={[styles.skeletonSalary, { backgroundColor: iconColor + '30' }]} />
+            <View style={styles.skeletonBadges}>
+              <View style={[styles.skeletonBadge, { backgroundColor: secondaryTextColor + '30' }]} />
+              <View style={[styles.skeletonBadge, { backgroundColor: secondaryTextColor + '30' }]} />
+            </View>
+          </View>
+        </View>
+      </Shimmer>
+
+      {/* Section Cards Skeleton */}
+      {[1, 2, 3, 4].map((index) => (
+        <Shimmer key={index}>
+          <View style={[styles.sectionCard, { backgroundColor: cardBackgroundColor, borderColor }]}>
+            <View style={[styles.skeletonSectionTitle, { backgroundColor: secondaryTextColor + '30' }]} />
+            <View style={styles.skeletonContent}>
+              <View style={[styles.skeletonLine, { backgroundColor: secondaryTextColor + '30' }]} />
+              <View style={[styles.skeletonLineShort, { backgroundColor: secondaryTextColor + '30' }]} />
+              <View style={[styles.skeletonLine, { backgroundColor: secondaryTextColor + '30' }]} />
+            </View>
+          </View>
+        </Shimmer>
+      ))}
+
+      <View style={styles.bottomSpacing} />
+    </ScrollView>
+  );
+
+  if (loading) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <Stack.Screen
+          options={{
+            title: 'Cargando...',
+            headerShown: true,
+          }}
+        />
+        <JobDetailSkeleton />
+        
+        {/* Action Bar Skeleton */}
+        <View style={[styles.actionBar, { backgroundColor: cardBackgroundColor, borderColor }]}>
+          <Shimmer>
+            <View style={[styles.skeletonActionButton, { backgroundColor: secondaryTextColor + '30' }]} />
+          </Shimmer>
+          <Shimmer>
+            <View style={[styles.skeletonActionButton, { backgroundColor: iconColor + '30' }]} />
+          </Shimmer>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  if (error || !job) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <Stack.Screen
+          options={{
+            title: 'Error',
+            headerShown: true,
+          }}
+        />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#FF453A" />
+          <ThemedText style={[styles.errorTitle, { color: textColor }]}>
+            Error al cargar el empleo
+          </ThemedText>
+          <ThemedText style={[styles.errorDescription, { color: secondaryTextColor }]}>
+            {error || 'No se pudo encontrar la información del empleo'}
+          </ThemedText>
+          <ThemedButton
+            title="Reintentar"
+            onPress={fetchJobDetail}
+            type="primary"
+            style={styles.retryButton}
+          />
+          <ThemedButton
+            title="Volver"
+            onPress={() => router.back()}
+            type="outline"
+            style={styles.backButton}
+          />
+        </View>
+      </ThemedView>
+    );
+  }
+
+  const displayJob = job || mockJob;
+
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <Stack.Screen
         options={{
-          title: job.title,
+          title: displayJob.title,
           headerShown: true,
           headerRight: () => (
             <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
@@ -128,9 +391,9 @@ export default function JobDetailScreen() {
             </View>
             <TouchableOpacity onPress={handleFavoritePress} style={styles.favoriteButton}>
               <Ionicons
-                name={isFavorite ? 'bookmark' : 'bookmark-outline'}
+                name={job && isBookmarked(job.id) ? 'bookmark' : 'bookmark-outline'}
                 size={24}
-                color={isFavorite ? iconColor : secondaryTextColor}
+                color={job && isBookmarked(job.id) ? iconColor : secondaryTextColor}
               />
             </TouchableOpacity>
           </View>
@@ -138,23 +401,23 @@ export default function JobDetailScreen() {
           <View style={styles.headerInfo}>
             <View style={styles.titleRow}>
               <ThemedText type="title" style={[styles.jobTitle, { color: textColor }]}>
-                {job.title}
+                {displayJob.title}
               </ThemedText>
-              {job.isFeatured && (
+              {displayJob.isFeatured && (
                 <Ionicons name="star" size={20} color="#FFD60A" />
               )}
             </View>
 
             <View style={styles.companyInfo}>
               <ThemedText style={[styles.companyName, { color: textColor }]}>
-                {job.company}
+                {displayJob.company?.name || 'Sin especificar'}
               </ThemedText>
               <View style={styles.rating}>
                 <View style={styles.stars}>
-                  {renderStars(job.companyRating)}
+                  {renderStars(displayJob.companyRating)}
                 </View>
                 <ThemedText style={[styles.ratingText, { color: secondaryTextColor }]}>
-                  {job.companyRating} ({job.viewCount} reseñas)
+                  {displayJob.companyRating} ({displayJob.viewCount} reseñas)
                 </ThemedText>
               </View>
             </View>
@@ -162,14 +425,14 @@ export default function JobDetailScreen() {
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={16} color={secondaryTextColor} />
               <ThemedText style={[styles.locationText, { color: secondaryTextColor }]}>
-                {job.location} • {job.workMode}
+                {displayJob.location} • {displayJob.workMode}
               </ThemedText>
             </View>
 
             <View style={styles.salaryRow}>
               <Ionicons name="cash-outline" size={16} color={iconColor} />
               <ThemedText style={[styles.salaryText, { color: iconColor }]}>
-                {job.currency} {job.salaryMin}-{job.salaryMax}
+                {displayJob.currency} {displayJob.salaryMin}-{displayJob.salaryMax}
               </ThemedText>
             </View>
 
@@ -177,22 +440,22 @@ export default function JobDetailScreen() {
               <View style={styles.metaItem}>
                 <Ionicons name="time-outline" size={14} color={secondaryTextColor} />
                 <ThemedText style={[styles.metaText, { color: secondaryTextColor }]}>
-                  {job.publishedDate}
+                  {displayJob.publishedDate}
                 </ThemedText>
               </View>
-              {job.applicationDeadline && (
+              {displayJob.applicationDeadline && (
                 <View style={styles.metaItem}>
                   <Ionicons name="calendar-outline" size={14} color={secondaryTextColor} />
                   <ThemedText style={[styles.metaText, { color: secondaryTextColor }]}>
-                    Fecha límite: {job.applicationDeadline}
+                    Fecha límite: {displayJob.applicationDeadline}
                   </ThemedText>
                 </View>
               )}
             </View>
 
             <View style={styles.badges}>
-              <StatusBadge status={job.jobType} />
-              <StatusBadge status={job.experienceLevel} />
+              <StatusBadge status={mapContractTypeToSpanish(displayJob.contractType) as any} />
+              <StatusBadge status={mapExperienceLevelToSpanish(displayJob.experienceLevel) as any} />
             </View>
           </View>
         </View>
@@ -341,13 +604,54 @@ export default function JobDetailScreen() {
           type="outline"
           style={styles.saveButton}
         />
-        <ThemedButton
-          title="Aplicar ahora"
-          onPress={handleApply}
-          type="primary"
-          style={styles.applyButton}
-        />
+        
+        {/* Dynamic Apply Button */}
+        {applicationStatus.loading ? (
+          <ThemedButton
+            title="Verificando aplicación..."
+            disabled
+            type="primary"
+            style={styles.applyButton}
+            leftIcon={<Ionicons name="sync" size={16} color="#FFFFFF" />}
+          />
+        ) : applicationStatus.hasApplied && applicationStatus.application ? (
+          <View style={styles.appliedContainer}>
+            <View style={[
+              styles.statusBadge, 
+              { backgroundColor: getApplicationStatusColor(applicationStatus.application.status) }
+            ]}>
+              <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+              <ThemedText style={styles.statusText}>
+                {mapApplicationStatusToSpanish(applicationStatus.application.status)}
+              </ThemedText>
+            </View>
+            <ThemedText style={[styles.applicationDate, { color: secondaryTextColor }]}>
+              Aplicaste el {applicationStatus.application.applicationDate}
+            </ThemedText>
+            <ThemedButton
+              title="Cancelar aplicación"
+              onPress={handleCancelApplication}
+              type="outline"
+              style={styles.cancelButton}
+              leftIcon={<Ionicons name="close-circle-outline" size={16} color={iconColor} />}
+            />
+          </View>
+        ) : (
+          <ThemedButton
+            title="Aplicar ahora"
+            onPress={handleApply}
+            type="primary"
+            style={styles.applyButton}
+          />
+        )}
       </View>
+
+      {/* CV Check Modal */}
+      <CVCheckModal
+        isOpen={showCVCheck}
+        onClose={() => setShowCVCheck(false)}
+        onDocumentsReady={handleDocumentsReady}
+      />
     </ThemedView>
   );
 }
@@ -547,5 +851,136 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     flex: 2,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorDescription: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  retryButton: {
+    minWidth: 120,
+    marginBottom: 12,
+  },
+  backButton: {
+    minWidth: 120,
+  },
+  appliedContainer: {
+    flex: 2,
+    gap: 8,
+    alignItems: 'center',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  applicationDate: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  cancelButton: {
+    width: '100%',
+  },
+  // Skeleton styles
+  skeletonLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+  },
+  skeletonFavorite: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  skeletonTitle: {
+    height: 28,
+    width: '80%',
+    borderRadius: 4,
+    marginBottom: 12,
+  },
+  skeletonCompany: {
+    height: 20,
+    width: '60%',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonLocation: {
+    height: 16,
+    width: '70%',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonSalary: {
+    height: 20,
+    width: '50%',
+    borderRadius: 4,
+    marginBottom: 12,
+  },
+  skeletonBadges: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  skeletonBadge: {
+    height: 24,
+    width: 80,
+    borderRadius: 12,
+  },
+  skeletonSectionTitle: {
+    height: 20,
+    width: '50%',
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  skeletonContent: {
+    gap: 8,
+  },
+  skeletonLine: {
+    height: 16,
+    width: '100%',
+    borderRadius: 4,
+  },
+  skeletonLineShort: {
+    height: 16,
+    width: '75%',
+    borderRadius: 4,
+  },
+  skeletonActionButton: {
+    height: 48,
+    flex: 1,
+    borderRadius: 8,
   },
 }); 

@@ -16,7 +16,7 @@ export default function JobsScreen() {
 
   const tabs: TabConfig[] = [
     { id: 0, title: 'Buscar', icon: 'search-outline' },
-    { id: 1, title: 'Mis Apps', icon: 'document-text-outline' },
+    { id: 1, title: 'Postulaciones', icon: 'document-text-outline' },
   ];
 
   const handleRefresh = useCallback(async () => {
