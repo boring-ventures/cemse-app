@@ -1,15 +1,14 @@
-import * as SecureStore from 'expo-secure-store';
-import { 
-  User, 
-  AuthTokens, 
-  LoginCredentials, 
-  RegisterData, 
-  StoredSession, 
-  ProfileUpdateData,
+import {
+  ApiResponse,
+  AuthTokens,
   ImageFile,
-  AuthError,
-  ApiResponse
+  LoginCredentials,
+  ProfileUpdateData,
+  RegisterData,
+  StoredSession,
+  User
 } from '@/app/types/auth';
+import * as SecureStore from 'expo-secure-store';
 import { apiService } from './apiService';
 
 // Secure storage keys
@@ -163,17 +162,18 @@ export const authService = {
     try {
       const credentials: LoginCredentials = { username, password };
       const response = await apiService.login(credentials);
+      console.log('signIn authService response: ', response);
 
       if (response.success && response.data) {
         const { user, token, refreshToken, role } = response.data;
         const tokens: AuthTokens = { token, refreshToken };
 
-        // Validate that user has JOVENES role
-        if (user.role !== 'JOVENES') {
+        // Validate that user has YOUTH role
+        if (user.role !== 'YOUTH') {
           return {
             success: false,
             error: {
-              message: 'Acceso restringido. Esta aplicación es solo para usuarios JOVENES.',
+              message: 'Acceso restringido. Esta aplicación es solo para usuarios YOUTH.',
               code: 'INVALID_ROLE'
             }
           };
