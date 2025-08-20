@@ -1,4 +1,4 @@
-import { ImageFile } from '@/app/types/auth';
+import { ImageFile, User, AuthTokens } from '@/app/types/auth';
 import { LoadingScreen } from '@/app/components/LoadingScreen';
 import { useAuthStore } from '@/app/store/authStore';
 import React, { createContext, useContext } from 'react';
@@ -6,6 +6,9 @@ import React, { createContext, useContext } from 'react';
 type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
+  user: User | null;
+  tokens: AuthTokens | null;
+  token: string | null;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   register: (
@@ -23,6 +26,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const {
     isAuthenticated,
     isLoading,
+    user,
+    tokens,
     login,
     logout,
     register,
@@ -37,6 +42,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         isAuthenticated,
         isLoading,
+        user,
+        tokens,
+        token: tokens?.token || null,
         login,
         logout,
         register,
