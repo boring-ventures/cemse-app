@@ -7,7 +7,7 @@ import { MentorCard } from '@/app/components/entrepreneurship/MentorCard';
 import { MessagingModal } from '@/app/components/entrepreneurship/MessagingModal';
 import { SchedulingModal } from '@/app/components/entrepreneurship/SchedulingModal';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
-import { Mentor, MentorshipProgram, MentorshipSession } from '@/app/types/entrepreneurship';
+import { Mentor, MentorshipProgram, MentorshipSession, ResourceFilter } from '@/app/types/entrepreneurship';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -252,7 +252,7 @@ export default function MentorsScreen() {
   ];
 
   // Initial filter state
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<ResourceFilter>({
     types: [],
     levels: [],
     categories: [],
