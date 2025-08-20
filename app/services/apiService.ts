@@ -132,7 +132,7 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({
         ...userData,
-        role: 'JOVENES' // Force JOVENES role for mobile app
+        role: 'YOUTH' // Force YOUTH role for mobile app
       }),
     });
   }
@@ -252,6 +252,167 @@ class ApiService {
   async validateToken(token: string): Promise<boolean> {
     const response = await this.getCurrentUser(token);
     return response.success && !!response.data;
+  }
+
+  // Job-related endpoints
+
+  /**
+   * Get all job offers with optional filters
+   */
+  async getJobOffers(
+    token: string,
+    filters?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      location?: string[];
+      contractType?: string[];
+      workModality?: string[];
+      experienceLevel?: string[];
+      salaryMin?: number;
+      salaryMax?: number;
+      exclude?: string;
+    }
+  ): Promise<ApiResponse<any[]>> {
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (Array.isArray(value)) {
+            value.forEach(v => queryParams.append(key, v.toString()));
+          } else {
+            queryParams.append(key, value.toString());
+          }
+        }
+      });
+    }
+
+    const endpoint = `/joboffer${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return this.authenticatedRequest<any[]>(endpoint, token);
+  }
+
+  /**
+   * Get job detail by ID
+   */
+  async getJobDetail(token: string, jobId: string): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>(`/joboffer/${jobId}`, token);
+  }
+
+  /**
+   * Get user's job applications
+   */
+  async getMyApplications(token: string): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>('/jobapplication/my', token);
+  }
+
+  /**
+   * Create job application
+   */
+  async createApplication(
+    token: string,
+    application: {
+      jobOfferId: string;
+      cvUrl?: string;
+      coverLetterUrl?: string;
+      status: 'PENDING';
+      message?: string;
+      questionAnswers?: Array<{
+        questionId: string;
+        question: string;
+        answer: string;
+      }>;
+    }
+  ): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>('/jobapplication', token, {
+      method: 'POST',
+      body: JSON.stringify(application),
+    });
+  }
+
+  /**
+   * Withdraw job application
+   */
+  async withdrawApplication(token: string, applicationId: string): Promise<ApiResponse<void>> {
+    return this.authenticatedRequest<void>(`/my-applications?applicationId=${applicationId}`, token, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Get chat messages for job application
+   */
+  async getJobMessages(token: string, applicationId: string): Promise<ApiResponse<any[]>> {
+    return this.authenticatedRequest<any[]>(`/jobmessage/${applicationId}`, token);
+  }
+
+  /**
+   * Send message in job application chat
+   */
+  async sendJobMessage(
+    token: string,
+    applicationId: string,
+    message: {
+      content: string;
+      messageType: 'TEXT' | 'FILE';
+    }
+  ): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>(`/jobmessage/${applicationId}`, token, {
+      method: 'POST',
+      body: JSON.stringify(message),
+    });
+  }
+
+  /**
+   * Get custom questions for a job
+   */
+  async getJobQuestions(token: string, jobOfferId: string): Promise<ApiResponse<any[]>> {
+    return this.authenticatedRequest<any[]>(`/jobquestion?jobOfferId=${jobOfferId}`, token);
+  }
+
+  /**
+   * Check CV status for current user
+   */
+  async getCVStatus(token: string): Promise<ApiResponse<{
+    hasCV: boolean;
+    hasCoverLetter: boolean;
+    cvUrl?: string;
+    coverLetterUrl?: string;
+    cvData?: any;
+  }>> {
+    return this.authenticatedRequest<{
+      hasCV: boolean;
+      hasCoverLetter: boolean;
+      cvUrl?: string;
+      coverLetterUrl?: string;
+      cvData?: any;
+    }>('/profile/cv-status', token);
+  }
+
+  /**
+   * Get user's bookmarked jobs
+   */
+  async getBookmarkedJobs(token: string): Promise<ApiResponse<string[]>> {
+    return this.authenticatedRequest<string[]>('/profile/bookmarks', token);
+  }
+
+  /**
+   * Bookmark a job
+   */
+  async bookmarkJob(token: string, jobId: string): Promise<ApiResponse<void>> {
+    return this.authenticatedRequest<void>('/profile/bookmarks', token, {
+      method: 'POST',
+      body: JSON.stringify({ jobId }),
+    });
+  }
+
+  /**
+   * Remove bookmark from a job
+   */
+  async removeBookmark(token: string, jobId: string): Promise<ApiResponse<void>> {
+    return this.authenticatedRequest<void>(`/profile/bookmarks/${jobId}`, token, {
+      method: 'DELETE',
+    });
   }
 }
 
