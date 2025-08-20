@@ -336,4 +336,203 @@ export interface MentorFilter {
   language: string[];
   sessionType: string[];
   searchQuery: string;
+}
+
+// Core Entrepreneurship Types from Spec
+export interface Entrepreneurship {
+  id: string;
+  ownerId: string;
+  name: string;
+  description: string;
+  category: string;
+  subcategory?: string;
+  businessStage: "IDEA" | "STARTUP" | "GROWING" | "ESTABLISHED";
+  logo?: string;
+  images: string[];
+  website?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  municipality: string;
+  department: string;
+  socialMedia?: {
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+  };
+  founded?: Date;
+  employees?: number;
+  annualRevenue?: number;
+  businessModel?: string;
+  targetMarket?: string;
+  isPublic: boolean;
+  isActive: boolean;
+  viewsCount: number;
+  rating?: number;
+  reviewsCount: number;
+  owner?: Profile;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Profile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatarUrl?: string;
+  currentInstitution?: string;
+  department?: string;
+  municipality?: string;
+}
+
+// Edit Form Types
+export interface EditFormData {
+  name: string;
+  description: string;
+  category: string;
+  subcategory: string;
+  businessStage: "IDEA" | "STARTUP" | "GROWING" | "ESTABLISHED";
+  municipality: string;
+  department: string;
+  website: string;
+  email: string;
+  phone: string;
+  address: string;
+  socialMedia: {
+    facebook: string;
+    instagram: string;
+    linkedin: string;
+  };
+  founded: string;
+  employees: string;
+  annualRevenue: string;
+  businessModel: string;
+  targetMarket: string;
+  isPublic: boolean;
+}
+
+// Contact System Types
+export interface ContactUser {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatarUrl?: string;
+  currentInstitution?: string;
+  skills: string[];
+  department?: string;
+  municipality?: string;
+  contactStatus?: string | null;
+  contactId?: string | null;
+}
+
+export interface ContactRequest {
+  id: string;
+  status: string;
+  message?: string;
+  createdAt: string;
+  user: ContactUser;
+}
+
+export interface ContactStats {
+  totalContacts: number;
+  pendingSent: number;
+  pendingReceived: number;
+  totalSent: number;
+  totalReceived: number;
+  totalRequests: number;
+}
+
+// Messaging Types
+export interface Conversation {
+  id: string;
+  otherParticipantId: string;
+  participant: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    avatarUrl?: string;
+  };
+  lastMessage?: Message;
+  unreadCount: number;
+  updatedAt: string;
+}
+
+export interface MessagingStats {
+  totalConversations: number;
+  unreadMessages: number;
+  totalMessagesSent: number;
+  totalMessagesReceived: number;
+}
+
+// Directory Types
+export interface Institution {
+  id: string;
+  name: string;
+  department: string;
+  region: string;
+  institutionType: string;
+  customType?: string;
+}
+
+export interface DirectoryProfile {
+  id: string;
+  name: string;
+  description: string;
+  logo?: string;
+  coverImage?: string;
+  industry: string;
+  location: string;
+  website?: string;
+  socialLinks?: {
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+  };
+  stats: {
+    followers: number;
+    posts: number;
+    projects: number;
+  };
+  servicesOffered: string[];
+  focusAreas: string[];
+}
+
+export interface Post {
+  id: string;
+  title: string;
+  content: string;
+  author: string;
+  createdAt: string;
+  likes: number;
+  comments: number;
+  image?: string;
+  category: string;
+}
+
+// Program Types
+export interface Program {
+  id: string;
+  name: string;
+  description: string;
+  organizer: string;
+  type: string;
+  duration: string;
+  deadline: string;
+  location: string;
+}
+
+export interface SuccessStory {
+  id: string;
+  entrepreneur: string;
+  businessName: string;
+  description: string;
+  industry: string;
+  location: string;
+  image?: string;
+  revenue: string;
+  employees: number;
 } 
