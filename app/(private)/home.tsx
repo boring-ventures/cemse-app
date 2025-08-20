@@ -1,6 +1,7 @@
 import { DashboardHeader } from '@/app/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/app/components/dashboard/MetricCard';
 import { QuickAccessCard } from '@/app/components/dashboard/QuickAccessCard';
+import { MobileNewsCarousel } from '@/app/components/news/MobileNewsCarousel';
 import { ThemedText } from '@/app/components/ThemedText';
 import { ThemedView } from '@/app/components/ThemedView';
 import { useAuthStore } from '@/app/store/authStore';
@@ -282,6 +283,16 @@ export default function HomeScreen() {
             </View>
           </View>
 
+          {/* News Carousel */}
+          <View style={styles.newsSection}>
+            <MobileNewsCarousel
+              title="Noticias Destacadas"
+              subtitle="Mantente informado sobre las últimas oportunidades y anuncios importantes"
+              maxItems={6}
+              enableNavigation={true}
+            />
+          </View>
+
           {/* Quick Access Cards */}
           <View style={styles.quickAccessSection}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>
@@ -326,6 +337,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginHorizontal: -6,
+  },
+  newsSection: {
+    marginBottom: 30,
+    marginHorizontal: -20, // Compensate for container padding to allow full-width carousel
   },
   quickAccessSection: {
     marginBottom: 20,

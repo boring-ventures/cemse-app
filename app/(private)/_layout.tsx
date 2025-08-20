@@ -53,6 +53,16 @@ export default function PrivateLayout() {
         }}
       />
       <Tabs.Screen
+        name="news/index"
+        options={{
+          title: "Noticias",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="newspaper-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="entrepreneurship/index"
         options={{
           title: "Emprendimiento",
@@ -140,6 +150,22 @@ export default function PrivateLayout() {
       />
       <Tabs.Screen
         name="entrepreneurship/mentors"
+        options={{
+          headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="news/[id]"
+        options={{
+          headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="news/search"
         options={{
           headerShown: false,
           href: null,
