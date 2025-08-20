@@ -414,6 +414,87 @@ class ApiService {
       method: 'DELETE',
     });
   }
+
+  // CV Management endpoints
+
+  /**
+   * Get CV data for current user
+   */
+  async getCVData(token: string): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>('/cv', token);
+  }
+
+  /**
+   * Update CV data
+   */
+  async updateCVData(token: string, cvData: Partial<any>): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>('/cv', token, {
+      method: 'PUT',
+      body: JSON.stringify(cvData),
+    });
+  }
+
+  /**
+   * Get cover letter data
+   */
+  async getCoverLetterData(token: string): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>('/cv/cover-letter', token);
+  }
+
+  /**
+   * Save cover letter data
+   */
+  async saveCoverLetterData(
+    token: string,
+    coverLetterData: {
+      content: string;
+      template?: string;
+      recipient?: any;
+      subject?: string;
+    }
+  ): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>('/cv/cover-letter', token, {
+      method: 'POST',
+      body: JSON.stringify(coverLetterData),
+    });
+  }
+
+  /**
+   * Generate CV for specific job application
+   */
+  async generateCVForApplication(token: string, jobOfferId: string): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>(`/cv/generate/${jobOfferId}`, token, {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * Upload profile image for CV
+   */
+  async uploadProfileImage(token: string, imageFile: File | FormData): Promise<ApiResponse<{ avatarUrl: string; profile?: any }>> {
+    const formData = new FormData();
+    
+    if (imageFile instanceof FormData) {
+      // If it's already FormData, use it directly
+      return this.authenticatedRequest<{ avatarUrl: string; profile?: any }>('/files/upload/profile-image', token, {
+        method: 'POST',
+        body: imageFile,
+        headers: {
+          // Don't set Content-Type for FormData, let browser set it with boundary
+        },
+      });
+    } else {
+      // If it's a File, create FormData
+      formData.append('avatar', imageFile);
+      return this.authenticatedRequest<{ avatarUrl: string; profile?: any }>('/files/upload/profile-image', token, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          // Don't set Content-Type for FormData, let browser set it with boundary
+        },
+      });
+    }
+  }
 }
 
 export const apiService = new ApiService();
