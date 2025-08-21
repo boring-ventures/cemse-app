@@ -22,9 +22,10 @@ import { MaterialTopTabBar } from '@react-navigation/material-top-tabs';
 import { useRouter } from 'expo-router';
 
 import { MobileNewsCard } from './MobileNewsCard';
+import { NewsFilterModal } from './NewsFilterModal';
 import Shimmer from '@/app/components/Shimmer';
 import { useNewsArticles } from '@/app/hooks/useNews';
-import { NewsArticle, MobileNewsListingProps } from '@/app/types/news';
+import { NewsArticle, MobileNewsListingProps, NewsFilters } from '@/app/types/news';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
 
 // Shimmer placeholder for news cards
@@ -184,6 +185,9 @@ export const MobileNewsListing: React.FC<MobileNewsListingProps> = ({
   enableFilters = true
 }) => {
   const router = useRouter();
+  const [showFilters, setShowFilters] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<NewsFilters>({});
+  
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
@@ -198,8 +202,9 @@ export const MobileNewsListing: React.FC<MobileNewsListingProps> = ({
     hasMore,
     fetchNewsByTab,
     onRefresh,
-    loadMore
-  } = useNewsArticles({ limit: 10 }, true);
+    loadMore,
+    applyFilters
+  } = useNewsArticles(appliedFilters, true);
 
   // Handle news card press
   const handleNewsPress = useCallback((newsItem: NewsArticle) => {
@@ -213,12 +218,16 @@ export const MobileNewsListing: React.FC<MobileNewsListingProps> = ({
 
   // Handle filter press
   const handleFilterPress = useCallback(() => {
-    Alert.alert(
-      'Filtros',
-      'Funcionalidad de filtros próximamente',
-      [{ text: 'OK' }]
-    );
+    setShowFilters(true);
   }, []);
+
+  // Handle filter apply
+  const handleFilterApply = useCallback((filters: NewsFilters) => {
+    setAppliedFilters(filters);
+    if (applyFilters) {
+      applyFilters(filters);
+    }
+  }, [applyFilters]);
 
   // Render news card
   const renderNewsCard = useCallback(({ item }: { item: NewsArticle }) => (
@@ -336,6 +345,14 @@ export const MobileNewsListing: React.FC<MobileNewsListingProps> = ({
           })}
         />
       )}
+
+      {/* Filter Modal */}
+      <NewsFilterModal
+        visible={showFilters}
+        filters={appliedFilters}
+        onApply={handleFilterApply}
+        onClose={() => setShowFilters(false)}
+      />
     </SafeAreaView>
   );
 };

@@ -268,7 +268,7 @@ export const MobileNewsCard: React.FC<MobileNewsCardProps> = ({
           <View style={styles.readTimeContainer}>
             <Ionicons name="time-outline" size={12} color={secondaryTextColor} />
             <Text style={[styles.readTimeText, dynamicStyles.metricText]}>
-              {Math.max(1, Math.ceil(news.content.length / 1000))} min
+              {news.readTime || Math.max(1, Math.ceil(news.content.length / 1000))} min
             </Text>
           </View>
         </View>

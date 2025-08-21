@@ -33,6 +33,8 @@ export interface NewsArticle {
   viewCount: number;
   likeCount: number;
   commentCount: number;
+  shareCount: number; // Share interaction count
+  readTime: number; // Estimated reading time in minutes
   expiresAt?: string;
   targetAudience: TargetAudience[];
   region?: string;

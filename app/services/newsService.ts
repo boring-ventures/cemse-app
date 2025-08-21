@@ -21,7 +21,8 @@ import { ApiResponse } from '@/app/types/auth';
 
 /**
  * News Service Class - Handles all news operations
- * Primary endpoint: /api/newsarticle/public for YOUTH-filtered content
+ * Primary endpoint: /api/news/public for YOUTH-filtered content
+ * CORRECTED: Updated to use correct API endpoints as per NEWS_MOBILE_SPEC.md
  */
 class NewsService {
   private baseUrl: string;
@@ -160,7 +161,7 @@ class NewsService {
       });
     }
 
-    const endpoint = `/newsarticle/public?${queryParams.toString()}`;
+    const endpoint = `/news/public?${queryParams.toString()}`;
     const response = await this.request<NewsAPIResponse>(endpoint);
 
     if (response.success && response.data) {
@@ -198,7 +199,7 @@ class NewsService {
    * Get specific news article by ID
    */
   async getNewsById(id: string): Promise<ApiResponse<NewsDetail>> {
-    const response = await this.request<NewsDetail>(`/newsarticle/${id}`);
+    const response = await this.request<NewsDetail>(`/news/${id}`);
 
     if (response.success && response.data) {
       // Process image URLs for mobile
@@ -261,7 +262,7 @@ class NewsService {
    * Increment view count for news article
    */
   async incrementViews(id: string, token?: string): Promise<ApiResponse<NewsArticle>> {
-    const endpoint = `/newsarticle/${id}/views`;
+    const endpoint = `/news/${id}/views`;
     
     if (token) {
       return this.authenticatedRequest<NewsArticle>(endpoint, token, {
@@ -278,7 +279,7 @@ class NewsService {
    * Like/Unlike news article (requires authentication)
    */
   async toggleLike(id: string, token: string): Promise<ApiResponse<{ liked: boolean; likeCount: number }>> {
-    return this.authenticatedRequest<{ liked: boolean; likeCount: number }>(`/newsarticle/${id}/like`, token, {
+    return this.authenticatedRequest<{ liked: boolean; likeCount: number }>(`/news/${id}/like`, token, {
       method: 'POST'
     });
   }
@@ -287,7 +288,7 @@ class NewsService {
    * Bookmark/Unbookmark news article (requires authentication)
    */
   async toggleBookmark(id: string, token: string): Promise<ApiResponse<{ bookmarked: boolean }>> {
-    return this.authenticatedRequest<{ bookmarked: boolean }>(`/newsarticle/${id}/bookmark`, token, {
+    return this.authenticatedRequest<{ bookmarked: boolean }>(`/news/${id}/bookmark`, token, {
       method: 'POST'
     });
   }
@@ -296,14 +297,14 @@ class NewsService {
    * Get user's bookmarked news (requires authentication)
    */
   async getBookmarkedNews(token: string): Promise<ApiResponse<string[]>> {
-    return this.authenticatedRequest<string[]>('/newsarticle/bookmarks', token);
+    return this.authenticatedRequest<string[]>('/news/bookmarks', token);
   }
 
   /**
    * Share news article (track share count)
    */
   async shareNews(id: string): Promise<ApiResponse<{ shareCount: number }>> {
-    return this.request<{ shareCount: number }>(`/newsarticle/${id}/share`, {
+    return this.request<{ shareCount: number }>(`/news/${id}/share`, {
       method: 'POST'
     });
   }

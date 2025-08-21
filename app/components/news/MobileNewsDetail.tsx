@@ -175,6 +175,8 @@ const HTMLContentRenderer: React.FC<{
         const images = document.querySelectorAll('img');
         images.forEach(img => {
           img.addEventListener('load', sendHeight);
+          // Set loading="lazy" for performance
+          img.loading = 'lazy';
         });
       </script>
     </body>

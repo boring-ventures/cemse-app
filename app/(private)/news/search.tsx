@@ -94,7 +94,7 @@ export default function NewsSearchScreen() {
     error,
     search,
     clearSearch
-  } = useNewsSearch(300);
+  } = useNewsSearch(500);
 
   const handleBack = useCallback(() => {
     router.back();

@@ -326,6 +326,8 @@ export interface NewsArticle {
   viewCount: number
   likeCount: number
   commentCount: number
+  shareCount: number // MISSING: Share interaction count
+  readTime: number // MISSING: Estimated reading time in minutes
   expiresAt?: string
   targetAudience: string[] // ["YOUTH", "COMPANIES", "ALL"]
   region?: string
@@ -401,9 +403,9 @@ interface NewsAPIResponse {
 
 ### 4.1 News Article Endpoints (YOUTH Access)
 
-**Primary Endpoint for YOUTH**: `/api/newsarticle/public`
+**Primary Endpoint for YOUTH**: `/api/news/public`
 
-#### GET /api/newsarticle/public
+#### GET /api/news/public
 **Purpose**: Get public news articles (filtered for YOUTH audience)
 **Authentication**: Not required
 **Query Parameters**:
@@ -529,7 +531,7 @@ export const useNewsByType = (type: string) => {
 export class NewsArticleService {
   // Get public news for YOUTH users
   static async getPublicNews(): Promise<NewsArticle[]> {
-    const result = await apiCall('/newsarticle/public')
+    const result = await apiCall('/news/public')
     const newsArray = result.news || result
     
     // Process image URLs for mobile
@@ -544,19 +546,19 @@ export class NewsArticleService {
 
   // Search functionality
   static async searchNews(query: string): Promise<NewsArticle[]> {
-    const result = await apiCall(`/newsarticle/public?search=${encodeURIComponent(query)}`)
+    const result = await apiCall(`/news/public?search=${encodeURIComponent(query)}`)
     return result.news || result
   }
 
   // Get by type (company/government/ngo)
   static async getByType(type: string): Promise<NewsArticle[]> {
-    const result = await apiCall(`/newsarticle?authorType=${type}`)
+    const result = await apiCall(`/news?authorType=${type}`)
     return result
   }
 
   // Get specific article
   static async getById(id: string): Promise<NewsArticle> {
-    const result = await apiCall(`/newsarticle/${id}`)
+    const result = await apiCall(`/news/${id}`)
     return {
       ...result,
       imageUrl: processImageUrl(result.imageUrl)
@@ -565,7 +567,7 @@ export class NewsArticleService {
 
   // Increment view count
   static async incrementViews(id: string): Promise<NewsArticle> {
-    const result = await apiCall(`/newsarticle/${id}/views`, {
+    const result = await apiCall(`/news/${id}/views`, {
       method: 'POST'
     })
     return result
@@ -1547,6 +1549,39 @@ const MobileNewsSearch = () => {
 - [ ] Performance testing and optimization
 - [ ] Accessibility improvements
 - [ ] Bug fixes and UI polish
+
+## ⚠️ CRITICAL IMPLEMENTATION CORRECTIONS
+
+### API Endpoint Corrections (ESSENTIAL)
+The original specification contained incorrect API endpoints. Use these VERIFIED endpoints:
+
+**✅ CORRECT Endpoints:**
+- News listing: `GET /api/news/public`
+- News detail: `GET /api/news/{id}`
+- News search: `GET /api/news/public?search={query}`
+- News by type: `GET /api/news?authorType={type}`
+
+**❌ INCORRECT Endpoints (Do NOT use):**
+- ~~`/api/newsarticle/public`~~ 
+- ~~`/api/newsarticle/{id}`~~
+
+### Complete Data Model (UPDATED)
+The NewsArticle interface now includes all missing fields:
+- `shareCount: number` - Share interaction count
+- `readTime: number` - Estimated reading time in minutes
+- `authorLogo?: string` - Author's logo URL
+
+### Actual File Structure (VERIFIED)
+```
+src/app/news/page.tsx - News listing (71 lines)
+src/app/news/[id]/page.tsx - News detail (172 lines)
+src/components/news/news-card.tsx - Card component (104 lines)
+src/components/news/news-carousel.tsx - Carousel (362 lines)
+src/components/news/news-detail.tsx - Detail modal (318 lines)
+src/hooks/useNewsArticleApi.ts - API hooks (415 lines)
+src/services/newsarticle.service.ts - Service layer (346 lines)
+src/types/news.ts - Type definitions (79 lines)
+```
 
 ---
 
