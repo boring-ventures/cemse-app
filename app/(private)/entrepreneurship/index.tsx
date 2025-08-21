@@ -1,25 +1,37 @@
 import { useThemeColor } from '@/app/hooks/useThemeColor';
-import { FeatureCard, Resource } from '@/app/types/entrepreneurship';
+import { FeatureCard, Resource, Program, SuccessStory } from '@/app/types/entrepreneurship';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedButton } from '../../components/ThemedButton';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { EntrepreneurshipCard } from '../../components/entrepreneurship/EntrepreneurshipCard';
 import { ResourceCard } from '../../components/entrepreneurship/ResourceCard';
+import Shimmer from '../../components/Shimmer';
+import { useResources } from '../../hooks/useResources';
+import { useAuth } from '../../components/AuthContext';
 
 export default function EntrepreneurshipHub() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'resources' | 'programs'>('resources');
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [stories, setStories] = useState<SuccessStory[]>([]);
+  const [loadingPrograms, setLoadingPrograms] = useState(false);
+  
   const router = useRouter();
+  const { user } = useAuth();
+  const { resources, loading: loadingResources, error: resourcesError, fetchResources } = useResources();
+  
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const iconColor = useThemeColor({}, 'tint');
+  const cardBackground = useThemeColor({}, 'card');
 
   // Mock feature cards data
   const features: FeatureCard[] = [
@@ -61,72 +73,63 @@ export default function EntrepreneurshipHub() {
     },
   ];
 
-  // Mock popular resources data
-  const popularResources: Resource[] = [
+  // Mock programs data (would be replaced with API call)
+  const mockPrograms: Program[] = [
     {
       id: '1',
-      type: 'Plantilla',
-      level: 'Principiante',
-      title: 'Plantilla de Plan de Negocios',
-      description: 'Plantilla completa en Word para crear tu plan de negocios paso a paso',
-      category: 'Planificación',
-      duration: '30 minutos',
-      rating: 4.8,
-      ratingCount: 156,
-      downloads: 2847,
-      fileInfo: 'DOCX • 2.5 MB',
-      fileSize: '2.5 MB',
-      publishDate: '2024-01-14',
-      tags: ['plan de negocios', 'plantilla', 'planificación'],
-      isFavorite: false,
-      author: 'CEMSE Bolivia',
+      name: 'Programa de Aceleración Tech',
+      description: 'Programa intensivo de 3 meses para startups tecnológicas',
+      organizer: 'CEMSE Bolivia',
+      type: 'Aceleración',
+      duration: '3 meses',
+      deadline: '2024-03-15',
+      location: 'Santa Cruz, Bolivia',
     },
     {
       id: '2',
-      type: 'Guía',
-      level: 'Intermedio',
-      title: 'Cómo Validar tu Idea de Negocio',
-      description: 'Guía práctica para validar tu idea antes de invertir tiempo y dinero',
-      category: 'Validación',
-      duration: '45 minutos',
-      rating: 4.6,
-      ratingCount: 98,
-      downloads: 1923,
-      fileInfo: 'PDF • 5.1 MB',
-      fileSize: '5.1 MB',
-      publishDate: '2024-01-19',
-      tags: ['validación', 'idea de negocio', 'investigación'],
-      isFavorite: false,
-      author: 'Dr. María Rodríguez',
-    },
-    {
-      id: '3',
-      type: 'Video',
-      level: 'Intermedio',
-      title: 'Finanzas para Emprendedores',
-      description: 'Video curso sobre gestión financiera básica para startups',
-      category: 'Finanzas',
-      duration: '2 horas',
-      rating: 4.9,
-      ratingCount: 234,
-      downloads: 3456,
-      fileInfo: 'MP4 • 850 MB',
-      fileSize: '850 MB',
-      publishDate: '2024-01-09',
-      tags: ['finanzas', 'startups', 'gestión financiera'],
-      isFavorite: false,
-      author: 'Carlos Mendoza',
+      name: 'Incubadora de Negocios Rurales',
+      description: 'Apoyo para emprendimientos en zonas rurales',
+      organizer: 'Fundación Rural',
+      type: 'Incubación',
+      duration: '6 meses',
+      deadline: '2024-02-28',
+      location: 'Cochabamba, Bolivia',
     },
   ];
+
+  // Load programs data
+  const loadPrograms = async () => {
+    setLoadingPrograms(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setPrograms(mockPrograms);
+    } catch (error) {
+      console.error('Error loading programs:', error);
+    } finally {
+      setLoadingPrograms(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPrograms();
+  }, []);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await Promise.all([
+        fetchResources(),
+        loadPrograms()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing:', error);
+      Alert.alert('Error', 'No se pudo actualizar la información');
+    } finally {
       setIsRefreshing(false);
-    }, 1500);
+    }
   };
 
   const handleCreateBusinessPlan = () => {
@@ -142,6 +145,22 @@ export default function EntrepreneurshipHub() {
   const handleViewAllResources = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/entrepreneurship/resource-center');
+  };
+
+  const handleTabPress = (tab: 'resources' | 'programs') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveTab(tab);
+  };
+
+  const handleProgramPress = (program: Program) => {
+    Alert.alert(
+      program.name,
+      `${program.description}\n\nOrganizador: ${program.organizer}\nDuración: ${program.duration}\nFecha límite: ${program.deadline}`,
+      [
+        { text: 'Cerrar', style: 'cancel' },
+        { text: 'Más información', onPress: () => console.log('Program details:', program.id) }
+      ]
+    );
   };
 
   const handleResourcePress = (resource: Resource) => {
@@ -217,15 +236,18 @@ export default function EntrepreneurshipHub() {
             </View>
           </View>
 
-          {/* Popular Resources Section */}
-          <View style={styles.resourcesSection}>
-            <View style={styles.resourcesHeader}>
+          {/* Tabbed Content Section */}
+          <View style={styles.tabbedSection}>
+            <View style={styles.tabbedHeader}>
               <View>
                 <ThemedText type="title" style={[styles.sectionTitle, { color: textColor }]}>
-                  Recursos Más Populares
+                  {activeTab === 'resources' ? 'Recursos Destacados' : 'Programas Disponibles'}
                 </ThemedText>
                 <ThemedText style={[styles.sectionSubtitle, { color: secondaryTextColor }]}>
-                  Descarga plantillas y guías para tu emprendimiento
+                  {activeTab === 'resources' 
+                    ? 'Descarga plantillas y guías para tu emprendimiento'
+                    : 'Programas de aceleración e incubación disponibles'
+                  }
                 </ThemedText>
               </View>
               
@@ -234,22 +256,170 @@ export default function EntrepreneurshipHub() {
                 onPress={handleViewAllResources}
               >
                 <ThemedText style={[styles.viewAllText, { color: iconColor }]}>
-                  📖 Ver todos
+                  {activeTab === 'resources' ? '📖 Ver todos' : '🚀 Ver todos'}
                 </ThemedText>
                 <Ionicons name="chevron-forward" size={16} color={iconColor} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.resourcesList}>
-              {popularResources.map((resource) => (
-                <ResourceCard
-                  key={resource.id}
-                  resource={resource}
-                  onPress={() => handleResourcePress(resource)}
-                  onDownload={() => handleResourceDownload(resource)}
+            {/* Tab Navigation */}
+            <View style={styles.tabNavigation}>
+              <TouchableOpacity
+                style={[
+                  styles.tabButton,
+                  {
+                    backgroundColor: activeTab === 'resources' ? iconColor : 'transparent',
+                    borderColor: iconColor,
+                  }
+                ]}
+                onPress={() => handleTabPress('resources')}
+              >
+                <Ionicons 
+                  name="library" 
+                  size={16} 
+                  color={activeTab === 'resources' ? 'white' : iconColor} 
                 />
-              ))}
+                <ThemedText style={[
+                  styles.tabButtonText,
+                  { color: activeTab === 'resources' ? 'white' : iconColor }
+                ]}>
+                  Recursos
+                </ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.tabButton,
+                  {
+                    backgroundColor: activeTab === 'programs' ? iconColor : 'transparent',
+                    borderColor: iconColor,
+                  }
+                ]}
+                onPress={() => handleTabPress('programs')}
+              >
+                <Ionicons 
+                  name="rocket" 
+                  size={16} 
+                  color={activeTab === 'programs' ? 'white' : iconColor} 
+                />
+                <ThemedText style={[
+                  styles.tabButtonText,
+                  { color: activeTab === 'programs' ? 'white' : iconColor }
+                ]}>
+                  Programas
+                </ThemedText>
+              </TouchableOpacity>
             </View>
+
+            {/* Tab Content */}
+            {activeTab === 'resources' ? (
+              <View style={styles.tabContent}>
+                {loadingResources ? (
+                  <View style={styles.loadingContent}>
+                    {[1, 2, 3].map((_, index) => (
+                      <Shimmer key={index}>
+                        <View style={[styles.skeletonCard, { backgroundColor: `${iconColor}20` }]} />
+                      </Shimmer>
+                    ))}
+                  </View>
+                ) : resourcesError ? (
+                  <View style={styles.errorContent}>
+                    <Ionicons name="alert-circle" size={48} color="#ef4444" />
+                    <ThemedText style={styles.errorTitle}>Error al cargar recursos</ThemedText>
+                    <ThemedText style={styles.errorMessage}>{resourcesError}</ThemedText>
+                    <TouchableOpacity
+                      style={[styles.retryButton, { backgroundColor: iconColor }]}
+                      onPress={fetchResources}
+                    >
+                      <ThemedText style={styles.retryButtonText}>Reintentar</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                ) : resources.length === 0 ? (
+                  <View style={styles.emptyContent}>
+                    <Ionicons name="library-outline" size={48} color={secondaryTextColor} />
+                    <ThemedText style={styles.emptyTitle}>Sin recursos disponibles</ThemedText>
+                    <ThemedText style={styles.emptyMessage}>
+                      No se encontraron recursos en este momento
+                    </ThemedText>
+                  </View>
+                ) : (
+                  <View style={styles.resourcesList}>
+                    {resources.slice(0, 3).map((resource) => (
+                      <ResourceCard
+                        key={resource.id}
+                        resource={resource}
+                        onPress={() => handleResourcePress(resource)}
+                        onDownload={() => handleResourceDownload(resource)}
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.tabContent}>
+                {loadingPrograms ? (
+                  <View style={styles.loadingContent}>
+                    {[1, 2].map((_, index) => (
+                      <Shimmer key={index}>
+                        <View style={[styles.skeletonCard, { backgroundColor: `${iconColor}20` }]} />
+                      </Shimmer>
+                    ))}
+                  </View>
+                ) : programs.length === 0 ? (
+                  <View style={styles.emptyContent}>
+                    <Ionicons name="rocket-outline" size={48} color={secondaryTextColor} />
+                    <ThemedText style={styles.emptyTitle}>Sin programas disponibles</ThemedText>
+                    <ThemedText style={styles.emptyMessage}>
+                      No hay programas activos en este momento
+                    </ThemedText>
+                  </View>
+                ) : (
+                  <View style={styles.programsList}>
+                    {programs.map((program) => (
+                      <TouchableOpacity
+                        key={program.id}
+                        style={[styles.programCard, { backgroundColor: cardBackground }]}
+                        onPress={() => handleProgramPress(program)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.programHeader}>
+                          <View style={[styles.programTypeIcon, { backgroundColor: `${iconColor}15` }]}>
+                            <Ionicons name="rocket" size={20} color={iconColor} />
+                          </View>
+                          <View style={styles.programHeaderInfo}>
+                            <ThemedText style={styles.programName}>{program.name}</ThemedText>
+                            <View style={[styles.programTypeBadge, { backgroundColor: `${iconColor}15` }]}>
+                              <ThemedText style={[styles.programTypeText, { color: iconColor }]}>
+                                {program.type}
+                              </ThemedText>
+                            </View>
+                          </View>
+                        </View>
+                        
+                        <ThemedText style={styles.programDescription} numberOfLines={2}>
+                          {program.description}
+                        </ThemedText>
+                        
+                        <View style={styles.programMeta}>
+                          <View style={styles.programMetaItem}>
+                            <Ionicons name="business" size={14} color={secondaryTextColor} />
+                            <ThemedText style={styles.programMetaText}>{program.organizer}</ThemedText>
+                          </View>
+                          <View style={styles.programMetaItem}>
+                            <Ionicons name="time" size={14} color={secondaryTextColor} />
+                            <ThemedText style={styles.programMetaText}>{program.duration}</ThemedText>
+                          </View>
+                          <View style={styles.programMetaItem}>
+                            <Ionicons name="calendar" size={14} color={secondaryTextColor} />
+                            <ThemedText style={styles.programMetaText}>Hasta: {program.deadline}</ThemedText>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Bottom CTA Section */}
@@ -362,15 +532,146 @@ const styles = StyleSheet.create({
   featuresGrid: {
     gap: 16,
   },
-  resourcesSection: {
+  tabbedSection: {
     paddingHorizontal: 20,
     marginBottom: 32,
   },
-  resourcesHeader: {
+  tabbedHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 20,
+  },
+  tabNavigation: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    gap: 12,
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tabContent: {
+    minHeight: 200,
+  },
+  loadingContent: {
+    gap: 16,
+  },
+  skeletonCard: {
+    height: 120,
+    borderRadius: 12,
+  },
+  errorContent: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyContent: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
+  },
+  programsList: {
+    gap: 16,
+  },
+  programCard: {
+    borderRadius: 12,
+    padding: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  programHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  programTypeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  programHeaderInfo: {
+    flex: 1,
+  },
+  programName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  programTypeBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  programTypeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+  },
+  programDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.8,
+    marginBottom: 12,
+  },
+  programMeta: {
+    gap: 8,
+  },
+  programMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  programMetaText: {
+    fontSize: 12,
+    marginLeft: 6,
+    opacity: 0.7,
   },
   viewAllButton: {
     flexDirection: 'row',

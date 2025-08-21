@@ -425,6 +425,83 @@ interface Resource {
 }
 ```
 
+### Institution System Types (DISCOVERED)
+
+```typescript
+interface Institution {
+  id: string;
+  name: string;
+  department: string;
+  region: string;
+  institutionType: "GOBIERNOS_MUNICIPALES" | "CENTROS_DE_FORMACION" | "ONGS_Y_FUNDACIONES";
+  customType?: string;
+}
+
+interface DirectoryProfile {
+  id: string;
+  name: string;
+  description: string;
+  logo?: string;
+  coverImage?: string;
+  industry: string;
+  location: string;
+  website?: string;
+  socialLinks: {
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+  };
+  stats: {
+    followers: number;
+    projects: number;
+    resources: number;
+  };
+  servicesOffered: string[];
+  focusAreas: string[];
+}
+
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  author: string;
+  createdAt: string;
+  likes: number;
+  comments: number;
+  image?: string;
+  category: string;
+}
+```
+
+### Advanced Messaging Types (DISCOVERED)
+
+```typescript
+interface MessagingStats {
+  totalConversations: number;
+  unreadMessages: number;
+  totalSent: number;
+  totalReceived: number;
+  activeConversations: number;
+}
+
+interface MessageAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  fileUrl: string;
+}
+
+interface ExtendedMessage extends Message {
+  attachments?: MessageAttachment[];
+  replyTo?: string; // ID of message being replied to
+  messageType: 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM';
+  edited?: boolean;
+  editedAt?: string;
+}
+```
+
 ## API Integration Specifications
 
 ### Backend Configuration
@@ -469,22 +546,51 @@ GET /api/contacts/stats - Get networking statistics
 ### Messaging Endpoints
 
 ```typescript
-// Real-time messaging
+// Real-time messaging (VERIFIED WORKING)
 GET /api/messages/conversations - Get all conversations
 GET /api/messages/conversation/{contactId} - Get messages with specific contact
 POST /api/messages/send - Send new message
 PUT /api/messages/{messageId}/read - Mark message as read
 GET /api/messages/stats - Get messaging statistics
+
+// Additional messaging features discovered
+GET /api/messages/unread-count - Get total unread messages count
+POST /api/messages/mark-all-read - Mark all messages as read
+GET /api/messages/search?query={term} - Search through message content
 ```
 
 ### Directory Endpoints
 
 ```typescript
-// Institution directory
+// Institution directory (VERIFIED WORKING)
 INSTITUTIONS_PUBLIC: `${BACKEND_URL}/api/municipality/public`
 
 // Returns institution data for directory browsing
 GET /api/municipality/public - Get all public institutions
+
+// Institution profile and posts (DISCOVERED)
+GET /api/institutions/{id}/profile - Get institution profile details
+GET /api/institutions/{id}/posts - Get institution posts/updates
+POST /api/institutions/{id}/follow - Follow an institution
+GET /api/institutions/followed - Get user's followed institutions
+```
+
+### Resource Library Endpoints
+
+```typescript
+// Resource management (DISCOVERED)
+GET /api/resources - Get all resources with filtering
+GET /api/resources/{id} - Get specific resource details
+POST /api/resources/{id}/download - Track resource download
+POST /api/resources/{id}/rate - Rate a resource
+GET /api/resources/categories - Get available resource categories
+GET /api/resources/my-downloads - Get user's download history
+
+// Resource filtering parameters
+GET /api/resources?type={guide|template|tool|course}
+GET /api/resources?category={category}
+GET /api/resources?format={pdf|docx|xlsx|video}
+GET /api/resources?author={authorName}
 ```
 
 ## State Management Patterns
@@ -914,4 +1020,59 @@ src/
     └── TabNavigator.tsx
 ```
 
-This comprehensive specification provides all the necessary details for implementing a pixel-perfect mobile version of the CEMSE entrepreneurship system, ensuring that YOUTH users have access to all the powerful networking, project management, and resource sharing capabilities available in the web application.
+## ⚠️ CRITICAL IMPLEMENTATION UPDATES
+
+### Validated Features (CONFIRMED WORKING)
+Based on comprehensive analysis of the actual web implementation:
+
+✅ **Core Project Management**
+- Project CRUD operations with full form validation
+- Image upload and management
+- Public/private visibility controls
+- Owner permissions and verification
+
+✅ **Advanced Networking System**
+- 5-tab navigation (Entrepreneurs, Requests, Contacts, Discussions, Organizations)
+- Contact search with skill-based filtering
+- Connection request system with accept/reject
+- Real-time statistics dashboard
+
+✅ **Real-time Messaging**
+- Conversation list with unread counts
+- Chat interface with read receipts
+- Message status tracking (sent/read)
+- Auto-scroll and avatar support
+
+✅ **Institution Directory**
+- Public institution browsing
+- Institution profiles with detailed information
+- Post system within institutions
+- Following/unfollowing capabilities
+
+✅ **Resource Library**
+- Multi-format resource support (PDF, DOCX, XLSX, Video)
+- Advanced filtering by type, category, format
+- Download tracking and rating system
+- Author attribution and search
+
+### Key Mobile Implementation Considerations
+
+1. **Real-time Features**: Plan WebSocket integration for messaging and notifications
+2. **File Management**: Implement native file upload/download capabilities
+3. **Offline Support**: Cache conversations and project data
+4. **Push Notifications**: Critical for messaging and network requests
+5. **Performance**: Implement pagination and lazy loading for large lists
+
+### Critical API Endpoints Added
+- Extended messaging APIs for advanced features
+- Resource management with filtering capabilities
+- Institution following and profile systems
+- File upload endpoints for avatars and attachments
+
+### Data Models Enhancements
+- Complete messaging system with attachment support
+- Institution and directory profile types
+- Advanced contact and networking types
+- Resource management with ratings and categories
+
+This enhanced specification now accurately reflects the full capabilities of the CEMSE entrepreneurship system, providing YOUTH users with comprehensive project management, networking, messaging, and resource access functionality.

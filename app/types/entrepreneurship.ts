@@ -425,6 +425,9 @@ export interface ContactUser {
   municipality?: string;
   contactStatus?: string | null;
   contactId?: string | null;
+  lastContactDate?: string;
+  connectionDate?: string;
+  phoneNumber?: string;
 }
 
 export interface ContactRequest {
@@ -433,6 +436,9 @@ export interface ContactRequest {
   message?: string;
   createdAt: string;
   user: ContactUser;
+  senderName: string;
+  senderAvatar?: string;
+  senderInstitution?: string;
 }
 
 export interface ContactStats {
