@@ -23,6 +23,8 @@ export function useJobSearch(): UseJobSearchReturn {
     return {
       ...apiJob,
       // Transform API data to UI format
+      companyData: apiJob.company,
+      company: typeof apiJob.company === 'string' ? apiJob.company : apiJob.company?.name || 'Sin especificar',
       companyRating: apiJob.company?.rating || 4.0,
       workMode: apiJob.workModality === 'ON_SITE' ? 'Presencial' : 
                 apiJob.workModality === 'REMOTE' ? 'Remoto' : 'Híbrido',
@@ -35,7 +37,6 @@ export function useJobSearch(): UseJobSearchReturn {
       viewCount: apiJob.viewsCount,
       isFeatured: apiJob.featured,
       isFavorite: false, // TODO: Implement favorites
-      company: apiJob.company || { id: 'unknown', name: 'Sin especificar' },
       companySize: apiJob.company?.size,
       industry: apiJob.company?.sector,
       companyDescription: apiJob.company?.description,

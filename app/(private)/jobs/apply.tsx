@@ -4,20 +4,31 @@ import { ThemedText } from '@/app/components/ThemedText';
 import { ThemedView } from '@/app/components/ThemedView';
 import { CVCheckModal } from '@/app/components/jobs/CVCheckModal';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
+import { useCVStatus } from '@/app/hooks/useCVStatus';
+import { useJobQuestions } from '@/app/hooks/useJobQuestions';
+import { useToast, toastMessages } from '@/app/hooks/useToast';
 import { ApplicationForm, JobOffer } from '@/app/types/jobs';
+import { apiService } from '@/app/services/apiService';
+import { useAuthStore } from '@/app/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { FormikProps, useFormik } from 'formik';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Shimmer from '@/app/components/Shimmer';
 
 export default function ApplyScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const router = useRouter();
-  const [profileComplete, setProfileComplete] = useState(75); // Mock profile completion
+  const { tokens } = useAuthStore();
+  const [profileComplete, setProfileComplete] = useState(0);
+  const [profileMissingFields, setProfileMissingFields] = useState<string[]>([]);
   const [showCVCheck, setShowCVCheck] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [job, setJob] = useState<JobOffer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const backgroundColor = useThemeColor({}, 'background');
   const cardBackgroundColor = useThemeColor({}, 'card');
@@ -26,90 +37,292 @@ export default function ApplyScreen() {
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const iconColor = useThemeColor({}, 'tint');
 
-  // Mock job data - in real app, this would come from API/store
-  const job: JobOffer = {
-    id: jobId || '1',
-    title: 'Desarrollador Frontend React',
-    company: {
-      id: '1',
-      name: 'TechCorp Bolivia',
-      rating: 4.5,
-      sector: 'Tecnología'
-    },
-    companyRating: 4.5,
-    location: 'Cochabamba, Bolivia',
-    municipality: 'Cochabamba',
-    department: 'Cochabamba',
-    workMode: 'Híbrido',
-    workModality: 'HYBRID' as const,
-    workSchedule: 'Tiempo completo',
-    contractType: 'FULL_TIME' as const,
-    description: 'Únete a nuestro equipo para desarrollar aplicaciones web modernas con React y TypeScript.',
-    requirements: ['Experiencia en React y TypeScript'],
-    skillsRequired: ['React', 'JavaScript', 'TypeScript', 'HTML'],
-    desiredSkills: [],
-    skills: ['React', 'JavaScript', 'TypeScript', 'HTML'],
-    experienceLevel: 'MID_LEVEL' as const,
-    jobType: 'Tiempo completo',
-    salaryMin: 3500,
-    salaryMax: 4500,
-    salaryCurrency: 'Bs.',
-    currency: 'Bs.',
-    publishedDate: 'Hace 2 días',
-    publishedAt: new Date().toISOString(),
-    applicantCount: 47,
-    applicationsCount: 47,
-    viewCount: 234,
-    viewsCount: 234,
-    isFeatured: true,
-    featured: true,
-    isFavorite: false,
-    isActive: true,
-    status: 'ACTIVE' as const,
-    companyId: '1',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+  const { hasCV, hasCoverLetter, cvUrl, coverLetterUrl, checkCVStatus } = useCVStatus();
+  const { questions, loading: questionsLoading, error: questionsError, fetchQuestions } = useJobQuestions();
+  const { toast } = useToast();
+
+  // Fetch job data from API
+  useEffect(() => {
+    if (jobId && tokens?.token) {
+      fetchJobDetail();
+      checkCVStatus();
+      fetchProfileCompletion();
+    }
+  }, [jobId, tokens?.token]);
+
+  // Fetch job questions when job is loaded
+  useEffect(() => {
+    if (job && tokens?.token) {
+      fetchQuestions(job.id);
+    }
+  }, [job?.id, tokens?.token]);
+
+  const fetchJobDetail = async (retryCount = 0) => {
+    if (!jobId || !tokens?.token) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await apiService.getJobDetail(tokens.token, jobId);
+      if (response.success && response.data) {
+        // Transform API data to UI format
+        const apiJob = response.data;
+        const transformedJob: JobOffer = {
+          ...apiJob,
+          companyData: apiJob.company,
+          company: typeof apiJob.company === 'string' ? apiJob.company : apiJob.company?.name || 'Sin especificar',
+          companyRating: apiJob.company?.rating || 4.0,
+          workMode: apiJob.workModality === 'ON_SITE' ? 'Presencial' : 
+                    apiJob.workModality === 'REMOTE' ? 'Remoto' : 'Híbrido',
+          skills: [...(apiJob.skillsRequired || []), ...(apiJob.desiredSkills || [])],
+          jobType: apiJob.contractType === 'FULL_TIME' ? 'Tiempo completo' :
+                   apiJob.contractType === 'PART_TIME' ? 'Medio tiempo' : 'Prácticas',
+          currency: apiJob.salaryCurrency || 'Bs.',
+          publishedDate: new Date(apiJob.publishedAt).toLocaleDateString('es-ES'),
+          applicantCount: apiJob.applicationsCount,
+          viewCount: apiJob.viewsCount,
+          isFeatured: apiJob.featured,
+          isFavorite: false,
+        };
+        setJob(transformedJob);
+      } else {
+        throw new Error(response.error?.message || 'Failed to fetch job details');
+      }
+    } catch (err) {
+      console.error('Error fetching job detail:', err);
+      
+      // Retry mechanism for network errors
+      if (retryCount < 2 && err instanceof Error && 
+          (err.message.includes('network') || err.message.includes('fetch'))) {
+        console.log(`Retrying job fetch, attempt ${retryCount + 1}`);
+        setTimeout(() => fetchJobDetail(retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
+      
+      // Set appropriate error message
+      let errorMessage = 'Error desconocido al cargar el empleo';
+      if (err instanceof Error) {
+        if (err.message.includes('401') || err.message.includes('token')) {
+          errorMessage = 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
+        } else if (err.message.includes('404')) {
+          errorMessage = 'Este empleo ya no está disponible o fue eliminado.';
+        } else if (err.message.includes('network') || err.message.includes('fetch')) {
+          errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDocumentsReady = () => {
+  const fetchProfileCompletion = async (retryCount = 0) => {
+    if (!tokens?.token) return;
+
+    try {
+      const response = await apiService.getProfileCompletion(tokens.token);
+      if (response.success && response.data) {
+        setProfileComplete(response.data.completionPercentage);
+        setProfileMissingFields(response.data.missingFields || []);
+      } else {
+        throw new Error(response.error?.message || 'Failed to fetch profile completion');
+      }
+    } catch (error) {
+      console.error('Error fetching profile completion:', error);
+      
+      // Retry mechanism for network errors
+      if (retryCount < 1 && error instanceof Error && 
+          (error.message.includes('network') || error.message.includes('fetch'))) {
+        console.log(`Retrying profile completion fetch, attempt ${retryCount + 1}`);
+        setTimeout(() => fetchProfileCompletion(retryCount + 1), 1000);
+        return;
+      }
+      
+      // Set fallback values if API fails after retries
+      setProfileComplete(75);
+      setProfileMissingFields([]);
+    }
+  };
+
+  const handleDocumentsReady = async () => {
     setShowCVCheck(false);
-    // In a real app, refresh document status here
+    // Refresh document status
+    await checkCVStatus();
+    // Re-validate form after documents are ready
+    applicationForm.validateForm();
   };
 
   const applicationForm = useFormik<ApplicationForm>({
     initialValues: {
       coverLetter: '',
-      cvFile: '',
+      cvFile: cvUrl || '',
       additionalDocuments: [],
       customAnswers: {},
       availableStartDate: '',
       salaryExpectation: undefined,
     },
+    validate: (values) => {
+      const errors: any = {};
+      
+      // Validate documents
+      if (!hasCV && !hasCoverLetter) {
+        errors.documents = 'Necesitas al menos un CV o carta de presentación PDF';
+      }
+      
+      // Validate cover letter
+      if (values.coverLetter && values.coverLetter.length > 1000) {
+        errors.coverLetter = 'La carta de presentación no puede exceder 1000 caracteres';
+      }
+      
+      // Validate required questions
+      const requiredQuestions = questions.filter(q => q.required);
+      for (const question of requiredQuestions) {
+        const answer = values.customAnswers[question.id];
+        if (!answer || !answer.toString().trim()) {
+          errors[`question_${question.id}`] = `Debes responder: "${question.question}"`;
+        } else {
+          // Validate answer length for text questions
+          if (question.type === 'text' && answer.toString().length > 500) {
+            errors[`question_${question.id}`] = `La respuesta no puede exceder 500 caracteres`;
+          }
+        }
+      }
+      
+      // Validate start date
+      if (values.availableStartDate && values.availableStartDate.trim()) {
+        const startDate = new Date(values.availableStartDate);
+        const today = new Date();
+        if (startDate < today) {
+          errors.availableStartDate = 'La fecha de disponibilidad debe ser futura';
+        }
+      }
+      
+      // Validate salary expectation
+      if (values.salaryExpectation && (values.salaryExpectation < 0 || values.salaryExpectation > 50000)) {
+        errors.salaryExpectation = 'La expectativa salarial debe estar entre 0 y 50,000 Bs.';
+      }
+      
+      return errors;
+    },
     onSubmit: async (values) => {
+      if (!job || !tokens?.token) {
+        toast(toastMessages.unexpectedError);
+        return;
+      }
+
+      // Validate form before submitting
+      const formErrors = applicationForm.errors;
+      if (Object.keys(formErrors).length > 0) {
+        toast({
+          title: 'Formulario incompleto',
+          description: 'Por favor completa todos los campos requeridos',
+          variant: 'error'
+        });
+        return;
+      }
+
+      // Check documents before submitting
+      if (!hasCV && !hasCoverLetter) {
+        toast({
+          title: 'Documentos requeridos',
+          description: 'Necesitas al menos un CV o carta de presentación PDF para aplicar',
+          variant: 'error'
+        });
+        setShowCVCheck(true);
+        return;
+      }
+
+      // Validate required questions
+      const requiredQuestions = questions.filter(q => q.required);
+      const missingAnswers = requiredQuestions.filter(q => 
+        !values.customAnswers[q.id] || !values.customAnswers[q.id].toString().trim()
+      );
+      
+      if (missingAnswers.length > 0) {
+        toast({
+          title: 'Preguntas incompletas',
+          description: `Debes responder todas las preguntas obligatorias (${missingAnswers.length} pendientes)`,
+          variant: 'error'
+        });
+        return;
+      }
+
       setSubmitting(true);
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Prepare question answers
+        const questionAnswers = questions
+          .filter(q => values.customAnswers[q.id])
+          .map(q => ({
+            questionId: q.id,
+            question: q.question,
+            answer: values.customAnswers[q.id].toString(),
+          }));
+
+        const applicationData = {
+          jobOfferId: job.id,
+          cvUrl: hasCV ? cvUrl : undefined,
+          coverLetterUrl: hasCoverLetter ? coverLetterUrl : undefined,
+          status: 'PENDING' as const,
+          message: values.coverLetter.trim() || undefined,
+          questionAnswers,
+        };
+
+        const response = await apiService.createApplication(tokens.token, applicationData);
         
-        Alert.alert(
-          'Aplicación enviada',
-          'Tu aplicación ha sido enviada exitosamente. Te notificaremos cuando haya novedades.',
-          [
-            {
-              text: 'Ver mis aplicaciones',
-              onPress: () => router.replace('/jobs?tab=1'),
-            },
-            {
-              text: 'Continuar buscando',
-              onPress: () => router.replace('/jobs'),
-              style: 'default',
-            },
-          ]
-        );
+        if (response.success) {
+          toast(toastMessages.applicationSubmitted);
+          
+          Alert.alert(
+            'Aplicación enviada',
+            'Tu aplicación ha sido enviada exitosamente. Te notificaremos cuando haya novedades.',
+            [
+              {
+                text: 'Ver mis aplicaciones',
+                onPress: () => router.replace('/jobs?tab=1'),
+              },
+              {
+                text: 'Continuar buscando',
+                onPress: () => router.replace('/jobs'),
+                style: 'default',
+              },
+            ]
+          );
+        } else {
+          throw new Error(response.error?.message || 'Failed to submit application');
+        }
       } catch (error) {
-        Alert.alert('Error', 'Hubo un problema al enviar tu aplicación. Intenta nuevamente.');
+        console.error('Error submitting application:', error);
+        
+        // Handle specific error types
+        let errorTitle = 'Error al enviar aplicación';
+        let errorDescription = 'No se pudo enviar la aplicación. Intenta nuevamente.';
+        
+        if (error instanceof Error) {
+          if (error.message.includes('401') || error.message.includes('token')) {
+            errorTitle = 'Sesión expirada';
+            errorDescription = 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
+          } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorTitle = 'Error de conexión';
+            errorDescription = 'Verifica tu conexión a internet e intenta nuevamente.';
+          } else if (error.message.includes('already applied')) {
+            errorTitle = 'Aplicación duplicada';
+            errorDescription = 'Ya has aplicado a este empleo anteriormente.';
+          } else {
+            errorDescription = error.message;
+          }
+        }
+        
+        toast({
+          title: errorTitle,
+          description: errorDescription,
+          variant: 'error'
+        });
       } finally {
         setSubmitting(false);
       }
@@ -138,6 +351,190 @@ export default function ApplyScreen() {
     return '#FF453A';
   };
 
+  const renderQuestionInput = (question: any) => {
+    switch (question.type) {
+      case 'multiple_choice':
+        return (
+          <View style={styles.pickerContainer}>
+            {question.options?.map((option: string, index: number) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.optionButton,
+                  { 
+                    borderColor,
+                    backgroundColor: applicationForm.values.customAnswers[question.id] === option 
+                      ? iconColor + '20' 
+                      : 'transparent'
+                  }
+                ]}
+                onPress={() => {
+                  applicationForm.setFieldValue(`customAnswers.${question.id}`, option);
+                }}
+              >
+                <ThemedText style={[styles.optionText, { color: textColor }]}>
+                  {option}
+                </ThemedText>
+                {applicationForm.values.customAnswers[question.id] === option && (
+                  <Ionicons name="checkmark-circle" size={20} color={iconColor} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
+
+      case 'boolean':
+        return (
+          <View style={styles.pickerContainer}>
+            {['Sí', 'No'].map((option, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.optionButton,
+                  { 
+                    borderColor,
+                    backgroundColor: applicationForm.values.customAnswers[question.id] === option 
+                      ? iconColor + '20' 
+                      : 'transparent'
+                  }
+                ]}
+                onPress={() => {
+                  applicationForm.setFieldValue(`customAnswers.${question.id}`, option);
+                }}
+              >
+                <ThemedText style={[styles.optionText, { color: textColor }]}>
+                  {option}
+                </ThemedText>
+                {applicationForm.values.customAnswers[question.id] === option && (
+                  <Ionicons name="checkmark-circle" size={20} color={iconColor} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
+
+      case 'text':
+      default:
+        return (
+          <FormField
+            label=""
+            placeholder="Tu respuesta..."
+            formikKey={`customAnswers.${question.id}`}
+            formikProps={applicationForm as FormikProps<any>}
+            multiline
+            numberOfLines={3}
+            style={styles.questionField}
+          />
+        );
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <Stack.Screen
+          options={{
+            title: 'Cargando...',
+            headerShown: true,
+          }}
+        />
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* Job Summary Skeleton */}
+          <Shimmer>
+            <View style={[styles.jobSummaryCard, { backgroundColor: cardBackgroundColor, borderColor }]}>
+              <View style={styles.jobSummaryHeader}>
+                <View style={[styles.companyLogo, { backgroundColor: iconColor + '20' }]} />
+                <View style={styles.jobSummaryInfo}>
+                  <View style={[styles.skeletonTitle, { backgroundColor: secondaryTextColor + '30' }]} />
+                  <View style={[styles.skeletonCompany, { backgroundColor: secondaryTextColor + '30' }]} />
+                  <View style={[styles.skeletonDetails, { backgroundColor: secondaryTextColor + '30' }]} />
+                </View>
+              </View>
+            </View>
+          </Shimmer>
+          
+          {/* Form Skeleton */}
+          <Shimmer>
+            <View style={[styles.formCard, { backgroundColor: cardBackgroundColor, borderColor }]}>
+              <View style={[styles.skeletonFormTitle, { backgroundColor: secondaryTextColor + '30' }]} />
+              {[1, 2, 3, 4, 5].map((index) => (
+                <View key={index} style={styles.questionSkeleton}>
+                  <View style={[styles.skeletonQuestionText, { backgroundColor: secondaryTextColor + '30' }]} />
+                  <View style={[styles.skeletonQuestionField, { backgroundColor: secondaryTextColor + '30', borderColor }]} />
+                </View>
+              ))}
+            </View>
+          </Shimmer>
+        </ScrollView>
+      </ThemedView>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <Stack.Screen
+          options={{
+            title: 'Error',
+            headerShown: true,
+          }}
+        />
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#FF453A" />
+          <ThemedText style={[styles.loadingText, { color: textColor }]}>
+            Error al cargar el empleo
+          </ThemedText>
+          <ThemedText style={[{ color: secondaryTextColor, textAlign: 'center', marginTop: 8 }]}>
+            {error}
+          </ThemedText>
+          <ThemedButton
+            title="Reintentar"
+            onPress={() => fetchJobDetail()}
+            type="primary"
+            style={{ marginTop: 20, minWidth: 120 }}
+          />
+          <ThemedButton
+            title="Volver"
+            onPress={() => router.back()}
+            type="outline"
+            style={{ marginTop: 12, minWidth: 120 }}
+          />
+        </View>
+      </ThemedView>
+    );
+  }
+
+  // Job not found
+  if (!job) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <Stack.Screen
+          options={{
+            title: 'No encontrado',
+            headerShown: true,
+          }}
+        />
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#FF9500" />
+          <ThemedText style={[styles.loadingText, { color: textColor }]}>
+            Empleo no encontrado
+          </ThemedText>
+          <ThemedText style={[{ color: secondaryTextColor, textAlign: 'center', marginTop: 8 }]}>
+            No se pudo encontrar la información de este empleo.
+          </ThemedText>
+          <ThemedButton
+            title="Volver"
+            onPress={() => router.back()}
+            type="primary"
+            style={{ marginTop: 20, minWidth: 120 }}
+          />
+        </View>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <Stack.Screen
@@ -159,7 +556,7 @@ export default function ApplyScreen() {
                 {job.title}
               </ThemedText>
               <ThemedText style={[styles.jobSummaryCompany, { color: textColor }]}>
-                {job.company?.name || 'Sin especificar'}
+                {job.company}
               </ThemedText>
               <ThemedText style={[styles.jobSummaryDetails, { color: secondaryTextColor }]}>
                 {job.location} • {job.currency} {job.salaryMin}-{job.salaryMax}
@@ -267,41 +664,41 @@ export default function ApplyScreen() {
           </View>
 
           {/* Custom Questions */}
-          <View style={styles.questionsSection}>
-            <ThemedText style={[styles.fieldLabel, { color: textColor }]}>
-              Preguntas del empleador
-            </ThemedText>
-            
-            <View style={styles.question}>
-              <ThemedText style={[styles.questionText, { color: textColor }]}>
-                ¿Por qué te interesa trabajar en TechCorp Bolivia?
+          {questionsLoading ? (
+            <Shimmer>
+              <View style={styles.questionsSection}>
+                <View style={[styles.skeletonQuestionTitle, { backgroundColor: secondaryTextColor + '30' }]} />
+                {[1, 2].map((index) => (
+                  <View key={index} style={styles.questionSkeleton}>
+                    <View style={[styles.skeletonQuestionText, { backgroundColor: secondaryTextColor + '30' }]} />
+                    <View style={[styles.skeletonQuestionField, { backgroundColor: secondaryTextColor + '30', borderColor }]} />
+                  </View>
+                ))}
+              </View>
+            </Shimmer>
+          ) : questions.length > 0 ? (
+            <View style={styles.questionsSection}>
+              <ThemedText style={[styles.fieldLabel, { color: textColor }]}>
+                Preguntas del empleador
               </ThemedText>
-              <FormField
-                label=""
-                placeholder="Tu respuesta..."
-                formikKey="question1"
-                formikProps={applicationForm as FormikProps<any>}
-                multiline
-                numberOfLines={3}
-                style={styles.questionField}
-              />
+              
+              {questions.map((question, index) => (
+                <View key={question.id} style={styles.question}>
+                  <ThemedText style={[styles.questionText, { color: textColor }]}>
+                    {question.question} {question.required && <ThemedText style={[styles.requiredAsterisk, { color: '#FF453A' }]}>*</ThemedText>}
+                  </ThemedText>
+                  
+                  {renderQuestionInput(question)}
+                  
+                  {(applicationForm.errors as any)[`question_${question.id}`] && (
+                    <ThemedText style={[styles.errorText, { color: '#FF453A' }]}>
+                      {(applicationForm.errors as any)[`question_${question.id}`]}
+                    </ThemedText>
+                  )}
+                </View>
+              ))}
             </View>
-
-            <View style={styles.question}>
-              <ThemedText style={[styles.questionText, { color: textColor }]}>
-                ¿Cuál es tu experiencia con React y TypeScript?
-              </ThemedText>
-              <FormField
-                label=""
-                placeholder="Tu respuesta..."
-                formikKey="question2"
-                formikProps={applicationForm as FormikProps<any>}
-                multiline
-                numberOfLines={3}
-                style={styles.questionField}
-              />
-            </View>
-          </View>
+          ) : null}
 
           {/* Start Date */}
           <FormField
@@ -627,5 +1024,42 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  skeletonTitle: {
+    height: 20,
+    width: '80%',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonCompany: {
+    height: 16,
+    width: '60%',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonDetails: {
+    height: 16,
+    width: '70%',
+    borderRadius: 4,
+  },
+  skeletonFormTitle: {
+    height: 20,
+    width: '50%',
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  skeletonQuestionTitle: {
+    height: 16,
+    width: '60%',
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  requiredAsterisk: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 }); 

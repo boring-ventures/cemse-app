@@ -5,7 +5,7 @@ import { JobApplication, JobsMetric, mapApplicationStatusToSpanish } from '@/app
 import { Ionicons } from '@expo/vector-icons';
 import { FormikProps, useFormik } from 'formik';
 import React, { useState, useEffect } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, Alert, Modal } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { ThemedView } from '../ThemedView';
 import { ThemedButton } from '../ThemedButton';
@@ -56,6 +56,8 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
   const router = useRouter();
   const [filterBy, setFilterBy] = useState('Todos los estados');
   const [companyFilter, setCompanyFilter] = useState('Filtrar por empresa...');
+  const [showStatusFilter, setShowStatusFilter] = useState(false);
+  const [showCompanyFilter, setShowCompanyFilter] = useState(false);
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
@@ -69,9 +71,39 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
   const searchForm = useFormik({
     initialValues: { search: '' },
     onSubmit: (values) => {
-      // TODO: Implement search filtering
+      // Search filtering is handled in real-time via filteredApplications
       console.log('Search:', values.search);
     },
+  });
+
+  // Filter applications based on search and status filter
+  const filteredApplications = applications.filter(application => {
+    // Status filter
+    if (filterBy !== 'Todos los estados') {
+      const statusInSpanish = mapApplicationStatusToSpanish(application.status);
+      if (statusInSpanish !== filterBy) {
+        return false;
+      }
+    }
+
+    // Company filter
+    if (companyFilter !== 'Filtrar por empresa...' && companyFilter !== '') {
+      const companyName = application.jobOffer?.company?.name || '';
+      if (!companyName.toLowerCase().includes(companyFilter.toLowerCase())) {
+        return false;
+      }
+    }
+
+    // Search filter
+    if (searchForm.values.search.trim()) {
+      const searchTerm = searchForm.values.search.toLowerCase();
+      const jobTitle = application.jobOffer?.title?.toLowerCase() || '';
+      const companyName = application.jobOffer?.company?.name?.toLowerCase() || '';
+      
+      return jobTitle.includes(searchTerm) || companyName.includes(searchTerm);
+    }
+
+    return true;
   });
 
   // Handle external refresh
@@ -83,7 +115,7 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
     }
   }, [isRefreshing]);
 
-  // Calculate metrics from real applications data
+  // Calculate metrics from real applications data (use all applications for accurate metrics)
   const calculateMetrics = (): JobsMetric[] => {
     const total = applications.length;
     const sent = applications.filter(app => mapApplicationStatusToSpanish(app.status) === 'Enviada').length;
@@ -140,6 +172,28 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
   };
 
   const metrics = calculateMetrics();
+
+  // Remove duplicate filteredApplications - already defined above with comprehensive filtering
+
+  // Status filter options
+  const statusFilterOptions = [
+    'Todos los estados',
+    'Enviada',
+    'En revisión', 
+    'Preseleccionado',
+    'Rechazada',
+    'Oferta recibida'
+  ];
+
+  const handleStatusFilterPress = (status: string) => {
+    setFilterBy(status);
+    setShowStatusFilter(false);
+  };
+
+  const handleCompanyFilterPress = (company: string) => {
+    setCompanyFilter(company);
+    setShowCompanyFilter(false);
+  };
 
   // Application Card Skeleton Component
   const ApplicationCardSkeleton = () => (
@@ -216,17 +270,10 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
     );
   }
 
-  const statusOptions = [
-    'Todos los estados',
-    'Enviada',
-    'En revisión',
-    'Preseleccionado',
-    'Rechazada',
-    'Entrevista programada',
-    'Oferta recibida',
-  ];
 
-  const companies = ['Filtrar por empresa...', 'TechCorp Bolivia', 'Zenith Health', 'Mindful Co.', 'Premium Services'];
+  // Get unique companies from applications for filter dropdown
+  const uniqueCompanies = Array.from(new Set(applications.map(app => app.company).filter(Boolean)));
+  const companies = ['Filtrar por empresa...', ...uniqueCompanies];
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
@@ -292,6 +339,7 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
           <View style={styles.filterRow}>
             <TouchableOpacity 
               style={[styles.filterDropdown, { borderColor: iconColor + '40', flex: 1 }]}
+              onPress={() => setShowStatusFilter(true)}
             >
               <ThemedText style={[styles.filterText, { color: textColor }]}>
                 {filterBy}
@@ -301,6 +349,7 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
             
             <TouchableOpacity 
               style={[styles.filterDropdown, { borderColor: iconColor + '40', flex: 1, marginLeft: 12 }]}
+              onPress={() => setShowCompanyFilter(true)}
             >
               <ThemedText style={[styles.filterText, { color: textColor }]}>
                 {companyFilter}
@@ -335,8 +384,20 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
                 Cuando apliques a empleos, aparecerán aquí para que puedas dar seguimiento.
               </ThemedText>
             </View>
+          ) : filteredApplications.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIconContainer, { backgroundColor: iconColor + '20' }]}>
+                <Ionicons name="search-outline" size={48} color={iconColor} />
+              </View>
+              <ThemedText style={[styles.emptyTitle, { color: textColor }]}>
+                No se encontraron aplicaciones
+              </ThemedText>
+              <ThemedText style={[styles.emptyDescription, { color: secondaryTextColor }]}>
+                Intenta ajustar los filtros de búsqueda para encontrar las aplicaciones que buscas.
+              </ThemedText>
+            </View>
           ) : (
-            applications.map((application) => (
+            filteredApplications.map((application) => (
               <ApplicationCard
                 key={application.id}
                 application={application}
@@ -354,6 +415,106 @@ export const MyApplicationsContent: React.FC<MyApplicationsContentProps> = ({
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+
+      {/* Status Filter Modal */}
+      <Modal
+        visible={showStatusFilter}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowStatusFilter(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowStatusFilter(false)}
+        >
+          <View style={[styles.filterModal, { backgroundColor: cardBackgroundColor, borderColor }]}>
+            <View style={styles.filterModalHeader}>
+              <ThemedText type="subtitle" style={[styles.filterModalTitle, { color: textColor }]}>
+                Filtrar por estado
+              </ThemedText>
+              <TouchableOpacity onPress={() => setShowStatusFilter(false)}>
+                <Ionicons name="close" size={24} color={secondaryTextColor} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.filterOptions}>
+              {statusFilterOptions.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.filterOption,
+                    { borderBottomColor: borderColor },
+                    filterBy === option && { backgroundColor: iconColor + '10' }
+                  ]}
+                  onPress={() => handleStatusFilterPress(option)}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText, 
+                    { color: textColor },
+                    filterBy === option && { color: iconColor, fontWeight: '600' }
+                  ]}>
+                    {option}
+                  </ThemedText>
+                  {filterBy === option && (
+                    <Ionicons name="checkmark" size={20} color={iconColor} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Company Filter Modal */}
+      <Modal
+        visible={showCompanyFilter}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCompanyFilter(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCompanyFilter(false)}
+        >
+          <View style={[styles.filterModal, { backgroundColor: cardBackgroundColor, borderColor }]}>
+            <View style={styles.filterModalHeader}>
+              <ThemedText type="subtitle" style={[styles.filterModalTitle, { color: textColor }]}>
+                Filtrar por empresa
+              </ThemedText>
+              <TouchableOpacity onPress={() => setShowCompanyFilter(false)}>
+                <Ionicons name="close" size={24} color={secondaryTextColor} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.filterOptions}>
+              {companies.map((company) => (
+                <TouchableOpacity
+                  key={company}
+                  style={[
+                    styles.filterOption,
+                    { borderBottomColor: borderColor },
+                    companyFilter === company && { backgroundColor: iconColor + '10' }
+                  ]}
+                  onPress={() => handleCompanyFilterPress(company)}
+                >
+                  <ThemedText style={[
+                    styles.filterOptionText, 
+                    { color: textColor },
+                    companyFilter === company && { color: iconColor, fontWeight: '600' }
+                  ]}>
+                    {company}
+                  </ThemedText>
+                  {companyFilter === company && (
+                    <Ionicons name="checkmark" size={20} color={iconColor} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ThemedView>
   );
 };
@@ -571,5 +732,50 @@ const styles = StyleSheet.create({
     height: 32,
     flex: 1,
     borderRadius: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  filterModal: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 16,
+    borderWidth: 1,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E7',
+  },
+  filterModalTitle: {
+    flex: 1,
+  },
+  filterOptions: {
+    maxHeight: 300,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  filterOptionText: {
+    flex: 1,
+    fontSize: 16,
   },
 }); 

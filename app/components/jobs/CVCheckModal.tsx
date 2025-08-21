@@ -99,17 +99,10 @@ export const CVCheckModal: React.FC<CVCheckModalProps> = ({
       } as any);
       formData.append('type', type);
 
-      // Upload using existing avatar endpoint as reference
-      // Note: You'll need to create a proper document upload endpoint
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL_DEV || 'http://192.168.0.87:3001/api'}/profile/upload-document`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${tokens.token}`,
-        },
-        body: formData
-      });
+      // Upload using the proper API service
+      const response = await apiService.uploadDocument(tokens.token, formData);
 
-      if (response.ok) {
+      if (response.success) {
         await refreshCVStatus();
         
         toast({
@@ -123,7 +116,7 @@ export const CVCheckModal: React.FC<CVCheckModalProps> = ({
           onDocumentsReady?.();
         }
       } else {
-        throw new Error('Upload failed');
+        throw new Error(response.error?.message || 'Upload failed');
       }
     } catch (error) {
       console.error('Error uploading document:', error);
@@ -148,13 +141,30 @@ export const CVCheckModal: React.FC<CVCheckModalProps> = ({
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            // TODO: Implement delete API call
-            toast({
-              title: 'Documento eliminado',
-              description: `Tu ${type === 'cv' ? 'CV' : 'carta de presentación'} ha sido eliminado`,
-              variant: 'default'
-            });
-            await refreshCVStatus();
+            try {
+              if (!tokens?.token) {
+                throw new Error('No authentication token');
+              }
+              const response = await apiService.deleteDocument(tokens.token, type);
+              
+              if (response.success) {
+                toast({
+                  title: 'Documento eliminado',
+                  description: `Tu ${type === 'cv' ? 'CV' : 'carta de presentación'} ha sido eliminado`,
+                  variant: 'default'
+                });
+                await refreshCVStatus();
+              } else {
+                throw new Error(response.error?.message || 'Delete failed');
+              }
+            } catch (error) {
+              console.error('Error deleting document:', error);
+              toast({
+                title: 'Error al eliminar',
+                description: 'No se pudo eliminar el documento. Intenta nuevamente.',
+                variant: 'error'
+              });
+            }
           }
         }
       ]
@@ -163,14 +173,29 @@ export const CVCheckModal: React.FC<CVCheckModalProps> = ({
 
   const handleViewDocument = async (url: string) => {
     try {
-      // TODO: Implement document viewing
-      // This would typically open the PDF in a viewer
-      toast({
-        title: 'Vista previa',
-        description: 'Funcionalidad de vista previa próximamente disponible',
-        variant: 'default'
-      });
+      // Open the document URL in the browser/external app
+      if (url) {
+        const { Linking } = require('react-native');
+        const canOpen = await Linking.canOpenURL(url);
+        
+        if (canOpen) {
+          await Linking.openURL(url);
+        } else {
+          toast({
+            title: 'Error',
+            description: 'No se pudo abrir el documento',
+            variant: 'error'
+          });
+        }
+      } else {
+        toast({
+          title: 'Error',
+          description: 'URL del documento no disponible',
+          variant: 'error'
+        });
+      }
     } catch (error) {
+      console.error('Error opening document:', error);
       toast({
         title: 'Error',
         description: 'No se pudo abrir el documento',

@@ -153,7 +153,7 @@ export const JobCard: React.FC<JobCardProps> = ({
           
           <View style={styles.companyInfo}>
             <ThemedText style={[styles.companyName, { color: textColor }]}>
-              {job.company?.name || 'Sin especificar'}
+              {job.company}
             </ThemedText>
             <View style={styles.rating}>
               <View style={styles.stars}>

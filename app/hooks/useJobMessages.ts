@@ -45,7 +45,7 @@ export function useJobMessages(): UseJobMessagesReturn {
         
         // Calculate unread count (messages from company/admin that haven't been read)
         const unread = messagesArray.filter(msg => 
-          !msg.readAt && msg.senderType !== 'USER'
+          !msg.readAt && (msg.senderType !== 'USER' && msg.senderType !== 'APPLICANT')
         ).length;
         setUnreadCount(unread);
         setLastRefresh(Date.now());

@@ -1,7 +1,7 @@
-# CEMSE Jobs & My Applications - Mobile Technical Specification
+# CEMSE Jobs, My Applications & News - Mobile Technical Specification
 
 ## Executive Summary
-This document provides a comprehensive technical specification for implementing the CEMSE jobs and my-applications features in React Native, based on the analysis of the existing Next.js web application.
+This document provides a comprehensive technical specification for implementing the CEMSE jobs, my-applications, and news features in React Native, based on the analysis of the existing Next.js web application. Focus is specifically on the YOUTH role features.
 
 ## Table of Contents
 1. [Feature Overview](#feature-overview)
@@ -12,9 +12,10 @@ This document provides a comprehensive technical specification for implementing 
 6. [Navigation Flow](#navigation-flow)
 7. [State Management](#state-management)
 8. [Key Features Implementation](#key-features-implementation)
-9. [Authentication & Authorization](#authentication--authorization)
-10. [Mobile-Specific Considerations](#mobile-specific-considerations)
-11. [Implementation Roadmap](#implementation-roadmap)
+9. [News System](#news-system)
+10. [Authentication & Authorization](#authentication--authorization)
+11. [Mobile-Specific Considerations](#mobile-specific-considerations)
+12. [Implementation Roadmap](#implementation-roadmap)
 
 ## Feature Overview
 
@@ -34,6 +35,15 @@ The applications system allows youth users to:
 - Track application progress
 - Withdraw applications
 - View application documents
+
+### News System
+The news system allows youth users to:
+- Browse latest news from companies and government institutions
+- View news in categorized tabs (Company vs Institutional news)
+- Read detailed news articles with rich content
+- View engagement metrics (views, likes, comments)
+- Navigate seamlessly between news listing and detail views
+- Access news through dashboard carousel integration
 
 ## System Architecture
 
@@ -226,6 +236,22 @@ interface CreateApplicationRequest {
 **Method**: DELETE
 **Headers**: Authorization Bearer token
 
+#### GET `/api/check-application/{jobId}` - Check Application Status
+**Purpose**: Check if user has already applied to a specific job
+**Method**: GET
+**Headers**: Authorization Bearer token
+**Response**:
+```typescript
+interface CheckApplicationResponse {
+  hasApplied: boolean;
+  application?: {
+    id: string;
+    status: ApplicationStatus;
+    appliedAt: string;
+  };
+}
+```
+
 ### Job Messages Endpoints
 
 #### GET `/api/jobmessage/{applicationId}` - Get Chat Messages
@@ -251,6 +277,42 @@ interface SendMessageRequest {
 **Purpose**: Fetch custom questions for specific job
 **Method**: GET
 **Headers**: Authorization Bearer token
+**Response**:
+```typescript
+interface JobQuestion {
+  id: string;
+  question: string;
+  type: 'text' | 'multiple_choice' | 'boolean';
+  required: boolean;
+  options?: string[];
+  order: number;
+}
+```
+
+### Profile & Document Endpoints
+
+#### GET `/api/profile/cv-status` - Get CV and Cover Letter Status
+**Purpose**: Check user's document status for applications
+**Method**: GET
+**Headers**: Authorization Bearer token
+**Response**:
+```typescript
+interface CVStatusResponse {
+  hasCV: boolean;
+  hasCoverLetter: boolean;
+  cvUrl?: string;
+  coverLetterUrl?: string;
+  cvData?: any;
+  source?: 'builder' | 'file';
+}
+```
+
+#### POST `/api/profile/upload-document` - Upload Document
+**Purpose**: Upload CV or cover letter PDF
+**Method**: POST
+**Headers**: Authorization Bearer token, multipart/form-data
+**Body**: FormData with file and type ('cv' | 'coverLetter')
+**Response**: Document upload confirmation
 
 ## Data Models & Types
 
@@ -345,6 +407,17 @@ export interface JobApplication {
 }
 ```
 
+### Job Question Answer Model
+```typescript
+export interface JobQuestionAnswer {
+  id?: string;
+  questionId: string;
+  question: string;
+  answer: string;
+  type: 'text' | 'multiple_choice' | 'boolean';
+}
+```
+
 ### Search Filters Model
 ```typescript
 export interface JobSearchFilters {
@@ -357,6 +430,24 @@ export interface JobSearchFilters {
   salaryMax?: number;
   publishedInDays?: number;
   sector?: string[];
+}
+```
+
+### Company Model
+```typescript
+export interface Company {
+  id: string;
+  name: string;
+  logo?: string;
+  description?: string;
+  website?: string;
+  sector?: string;
+  size?: string;
+  rating?: number;
+  reviewCount?: number;
+  images?: string[];
+  location?: string;
+  email?: string;
 }
 ```
 
@@ -1157,6 +1248,1181 @@ const checkFileAccess = async (fileUrl: string) => {
 };
 ```
 
+## News System
+
+The news system provides YOUTH users with access to published news articles from companies and government institutions. The system follows a read-only pattern for youth users with categorized content display.
+
+### News Architecture
+
+#### Route Structure
+```
+/news                    # News listing page with tabs
+/news/[id]              # News detail page
+```
+
+#### File Structure Analysis
+```
+src/
+├── app/news/
+│   ├── page.tsx                    # News listing with tabs
+│   └── [id]/
+│       └── page.tsx               # News detail view
+├── components/news/
+│   ├── news-card.tsx             # Individual news card
+│   ├── news-carousel.tsx         # Dashboard carousel
+│   └── news-detail.tsx           # Detail view component
+├── hooks/
+│   └── useNewsArticleApi.ts       # News API hooks
+├── services/
+│   └── newsarticle.service.ts     # News API service
+└── types/
+    └── news.ts                    # News type definitions
+```
+
+### News Data Models
+
+#### NewsArticle Interface
+```typescript
+export type NewsType = "COMPANY" | "GOVERNMENT" | "NGO";
+export type NewsStatus = "PUBLISHED" | "DRAFT" | "ARCHIVED";
+export type NewsPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+
+export interface NewsArticle {
+  id: string;
+  title: string;
+  content: string;                  // HTML content
+  summary: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  authorId: string;
+  authorName: string;
+  authorType: NewsType;
+  authorLogo?: string;
+  status: NewsStatus;
+  priority: NewsPriority;
+  featured: boolean;
+  tags: string[];
+  category: string;
+  publishedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  expiresAt?: string;
+  targetAudience: string[];          // ["YOUTH", "COMPANIES", "ALL"]
+  region?: string;
+  readTime: number;
+  relatedLinks?: Array<{
+    title: string;
+    url: string;
+  }>;
+}
+```
+
+### News API Integration
+
+#### Base Endpoints
+```typescript
+// For YOUTH users - all endpoints are read-only
+GET /api/news/public              // Get public news (for youth)
+GET /api/news/[id]               // Get specific news article
+POST /api/news/[id]/views        // Increment view count
+```
+
+#### API Service Implementation
+```typescript
+export class NewsArticleService {
+  // GET /api/news/public - Get public news for youth
+  static async getPublicNews(): Promise<NewsArticle[]> {
+    const result = await apiCall('/news/public');
+    return result.news || result;
+  }
+
+  // GET /api/news/{id} - Get specific news article
+  static async getById(id: string): Promise<NewsArticle> {
+    return await apiCall(`/news/${id}`);
+  }
+
+  // POST /api/news/{id}/views - Increment views
+  static async incrementViews(id: string): Promise<NewsArticle> {
+    return await apiCall(`/news/${id}/views`, {
+      method: 'POST'
+    });
+  }
+
+  // Search and filtering
+  static async searchNews(query: string): Promise<NewsArticle[]> {
+    const result = await apiCall(`/news/public?search=${encodeURIComponent(query)}`);
+    return result.news || result;
+  }
+
+  static async getByCategory(category: string): Promise<NewsArticle[]> {
+    const result = await apiCall(`/news/public?category=${category}`);
+    return result.news || result;
+  }
+
+  static async getFeatured(): Promise<NewsArticle[]> {
+    const result = await apiCall('/news/public?featured=true');
+    return result.news || result;
+  }
+}
+```
+
+#### React Query Hooks
+```typescript
+// Key hooks for YOUTH users
+export const usePublicNews = () => {
+  return useQuery({
+    queryKey: ['news', 'public'],
+    queryFn: NewsArticleService.getPublicNews,
+  });
+};
+
+export const useNewsArticle = (id: string) => {
+  return useQuery({
+    queryKey: ['news', 'detail', id],
+    queryFn: () => NewsArticleService.getById(id),
+    enabled: !!id,
+  });
+};
+
+export const useIncrementViews = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: NewsArticleService.incrementViews,
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries(['news', 'detail', id]);
+    },
+  });
+};
+```
+
+### News UI Components
+
+#### NewsCard Component
+```typescript
+interface NewsCardProps {
+  news: {
+    id: string;
+    title: string;
+    summary: string;
+    imageUrl: string;
+    authorName: string;
+    authorType: string;
+    authorLogo: string;
+    publishedAt: string;
+    viewCount: number;
+    category: string;
+  };
+}
+
+// Key features:
+// - Hover animations with framer-motion
+// - Image overlay with gradient
+// - Author badge with logo
+// - Category display
+// - View count and date formatting
+// - Navigation to detail page
+```
+
+#### News Listing Page (Tabbed Interface)
+```typescript
+// Features:
+// - Two tabs: "Noticias Empresariales" and "Noticias Institucionales"
+// - Animated tab transitions with framer-motion
+// - Grid layout (1 col mobile, 2 col tablet, 3 col desktop)
+// - Same NewsCard component for both tabs
+// - Loading and error states
+
+const NewsPage = () => {
+  const [activeTab, setActiveTab] = useState("company");
+  const { data: newsArticles, loading, error } = useNewsArticles();
+
+  return (
+    <Tabs defaultValue="company" onValueChange={setActiveTab}>
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="company">
+          <Building2 className="w-4 h-4" />
+          Noticias Empresariales
+        </TabsTrigger>
+        <TabsTrigger value="institutional">
+          <Landmark className="w-4 h-4" />
+          Noticias Institucionales
+        </TabsTrigger>
+      </TabsList>
+      
+      <AnimatePresence mode="wait">
+        <motion.div key={activeTab}>
+          <TabsContent value="company">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {newsArticles?.map((news) => (
+                <NewsCard key={news.id} news={news} />
+              ))}
+            </div>
+          </TabsContent>
+        </motion.div>
+      </AnimatePresence>
+    </Tabs>
+  );
+};
+```
+
+#### News Detail Page
+```typescript
+// Features:
+// - Full article display with HTML content rendering
+// - Featured image with proper aspect ratio
+// - Author information with logo
+// - Published date and read time
+// - Engagement metrics (views, likes, comments)
+// - Tags display
+// - Related links
+// - Loading skeleton
+// - Error handling
+
+const NewsDetailPage = () => {
+  const { id } = useParams();
+  const [news, setNews] = useState<NewsDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Manual fetch with useEffect (can be optimized with React Query)
+  useEffect(() => {
+    const fetchNewsDetail = async () => {
+      const response = await fetch(`/api/news/${id}`);
+      const data = await response.json();
+      setNews(data);
+    };
+    fetchNewsDetail();
+  }, [id]);
+
+  return (
+    <motion.div>
+      {/* Header */}
+      <div className="mb-8">
+        <h1>{news.title}</h1>
+        <div className="flex items-center gap-4">
+          <Image src={news.authorLogo} alt={news.authorName} />
+          <span>{news.authorName}</span>
+          <span>{formatDate(news.publishedAt)}</span>
+          <span>{news.readTime} min read</span>
+        </div>
+      </div>
+
+      {/* Featured Image */}
+      <div className="relative h-[400px] mb-8">
+        <Image src={news.imageUrl} alt={news.title} fill />
+      </div>
+
+      {/* Content */}
+      <Card className="p-8 mb-8">
+        <div 
+          className="prose max-w-none"
+          dangerouslySetInnerHTML={{ __html: news.content }}
+        />
+      </Card>
+
+      {/* Engagement Metrics */}
+      <div className="flex justify-between items-center">
+        <div className="flex gap-6">
+          <Button variant="ghost">
+            <ThumbsUp className="w-4 h-4" />
+            <span>{news.likeCount}</span>
+          </Button>
+          <Button variant="ghost">
+            <MessageCircle className="w-4 h-4" />
+            <span>{news.commentCount}</span>
+          </Button>
+          <Button variant="ghost">
+            <Share2 className="w-4 h-4" />
+            <span>{news.shareCount}</span>
+          </Button>
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            <span>{news.viewCount} views</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tags */}
+      <div className="mt-6 flex flex-wrap gap-2">
+        {news.tags.map((tag) => (
+          <Badge key={tag}>{tag}</Badge>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+```
+
+#### Dashboard News Carousel
+```typescript
+// Features:
+// - Two-column layout (Company vs Government/NGO news)
+// - Carousel navigation with prev/next buttons
+// - Featured article + 2 compact articles per column
+// - Manual data fetching with separate API calls
+// - Loading skeletons
+// - Empty states with icons
+
+const NewsCarousel = () => {
+  const [companyNews, setCompanyNews] = useState<NewsArticle[]>([]);
+  const [governmentNews, setGovernmentNews] = useState<NewsArticle[]>([]);
+  const [companyIndex, setCompanyIndex] = useState(0);
+  const [governmentIndex, setGovernmentIndex] = useState(0);
+
+  const fetchNews = async () => {
+    // Fetch company news
+    const companyResponse = await fetch(
+      "/api/news?type=company&featured=true&targetAudience=YOUTH&limit=6"
+    );
+    const companyData = await companyResponse.json();
+
+    // Fetch government news
+    const govResponse = await fetch(
+      "/api/news?type=government&targetAudience=YOUTH&limit=6"
+    );
+    const govData = await govResponse.json();
+
+    setCompanyNews(companyData.news || []);
+    setGovernmentNews(govData.news || []);
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Company News Column */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3>Noticias Empresariales</h3>
+          <div className="flex gap-1">
+            <Button onClick={prevCompany}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button onClick={nextCompany}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Featured article */}
+        <NewsCard article={companyNews[companyIndex]} />
+        
+        {/* Compact articles */}
+        <div className="grid grid-cols-1 gap-3">
+          {companyNews.slice(companyIndex + 1, companyIndex + 3)
+            .map((article) => (
+              <NewsCard key={article.id} article={article} compact />
+            ))}
+        </div>
+      </div>
+
+      {/* Government/NGO News Column */}
+      <div className="space-y-4">
+        {/* Similar structure for institutional news */}
+      </div>
+    </div>
+  );
+};
+```
+
+### Mobile Implementation Guidelines
+
+#### React Native Components
+
+**News Listing Screen**
+```typescript
+// Use react-native-tab-view for tab implementation
+import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
+
+const NewsListingScreen = () => {
+  const [index, setIndex] = useState(0);
+  const [routes] = useState([
+    { key: 'company', title: 'Empresariales' },
+    { key: 'institutional', title: 'Institucionales' },
+  ]);
+
+  const renderTabBar = (props) => (
+    <TabBar
+      {...props}
+      indicatorStyle={{ backgroundColor: '#3B82F6' }}
+      style={{ backgroundColor: 'white' }}
+      labelStyle={{ color: '#374151', fontWeight: '600' }}
+      activeColor="#3B82F6"
+      inactiveColor="#6B7280"
+    />
+  );
+
+  const CompanyRoute = () => (
+    <FlatList
+      data={companyNews}
+      renderItem={({ item }) => <NewsCard news={item} />}
+      numColumns={1}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ padding: 16 }}
+    />
+  );
+
+  const InstitutionalRoute = () => (
+    <FlatList
+      data={institutionalNews}
+      renderItem={({ item }) => <NewsCard news={item} />}
+      numColumns={1}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ padding: 16 }}
+    />
+  );
+
+  return (
+    <TabView
+      navigationState={{ index, routes }}
+      renderScene={SceneMap({
+        company: CompanyRoute,
+        institutional: InstitutionalRoute,
+      })}
+      onIndexChange={setIndex}
+      renderTabBar={renderTabBar}
+    />
+  );
+};
+```
+
+**News Card Component**
+```typescript
+import { TouchableOpacity, Image, View, Text } from 'react-native';
+import { Card } from '../ui/Card';
+import { Badge } from '../ui/Badge';
+
+const NewsCard = ({ news, onPress, compact = false }) => {
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  return (
+    <TouchableOpacity onPress={() => onPress(news.id)}>
+      <Card style={[styles.card, compact && styles.compactCard]}>
+        {/* Image Section */}
+        <View style={styles.imageContainer}>
+          <Image 
+            source={{ uri: news.imageUrl }} 
+            style={[styles.image, compact && styles.compactImage]}
+            resizeMode="cover"
+          />
+          <View style={styles.overlay} />
+          <View style={styles.overlayContent}>
+            <Badge 
+              text={news.category}
+              style={styles.categoryBadge}
+            />
+          </View>
+        </View>
+
+        {/* Content Section */}
+        <View style={styles.content}>
+          {/* Author Info */}
+          <View style={styles.authorRow}>
+            <Image 
+              source={{ uri: news.authorLogo }} 
+              style={styles.authorLogo}
+            />
+            <Text style={styles.authorName}>{news.authorName}</Text>
+          </View>
+
+          {/* Title */}
+          <Text 
+            style={[styles.title, compact && styles.compactTitle]}
+            numberOfLines={2}
+          >
+            {news.title}
+          </Text>
+
+          {/* Summary */}
+          <Text 
+            style={[styles.summary, compact && styles.compactSummary]}
+            numberOfLines={2}
+          >
+            {news.summary}
+          </Text>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <View style={styles.dateContainer}>
+              <Icon name="calendar" size={14} color="#6B7280" />
+              <Text style={styles.date}>{formatDate(news.publishedAt)}</Text>
+            </View>
+            <View style={styles.viewsContainer}>
+              <Icon name="eye" size={14} color="#6B7280" />
+              <Text style={styles.views}>{news.viewCount}</Text>
+            </View>
+          </View>
+        </View>
+      </Card>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  compactCard: {
+    marginBottom: 12,
+  },
+  imageContainer: {
+    position: 'relative',
+    height: 192,
+  },
+  compactImage: {
+    height: 128,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  overlayContent: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+  },
+  categoryBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  content: {
+    padding: 16,
+  },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  authorLogo: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  authorName: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+    lineHeight: 24,
+  },
+  compactTitle: {
+    fontSize: 16,
+  },
+  summary: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  compactSummary: {
+    fontSize: 12,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  date: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  viewsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  views: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+});
+```
+
+**News Detail Screen**
+```typescript
+import { ScrollView, View, Text, Image, TouchableOpacity } from 'react-native';
+import { WebView } from 'react-native-webview';
+import { useRoute, useNavigation } from '@react-navigation/native';
+
+const NewsDetailScreen = () => {
+  const route = useRoute();
+  const navigation = useNavigation();
+  const { newsId } = route.params;
+  
+  const { data: news, loading, error } = useNewsArticle(newsId);
+  const incrementViewsMutation = useIncrementViews();
+
+  useEffect(() => {
+    if (news) {
+      incrementViewsMutation.mutate(newsId);
+    }
+  }, [news]);
+
+  if (loading) return <NewsDetailSkeleton />;
+  if (error) return <ErrorState error={error} />;
+
+  return (
+    <ScrollView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>{news.title}</Text>
+        
+        <View style={styles.metaInfo}>
+          <View style={styles.authorInfo}>
+            <Image 
+              source={{ uri: news.authorLogo }} 
+              style={styles.authorLogo}
+            />
+            <Text style={styles.authorName}>{news.authorName}</Text>
+          </View>
+          <Text style={styles.publishDate}>
+            {formatDate(news.publishedAt)}
+          </Text>
+          <Text style={styles.readTime}>
+            {news.readTime} min read
+          </Text>
+        </View>
+      </View>
+
+      {/* Featured Image */}
+      <View style={styles.imageContainer}>
+        <Image 
+          source={{ uri: news.imageUrl }} 
+          style={styles.featuredImage}
+          resizeMode="cover"
+        />
+      </View>
+
+      {/* Content */}
+      <View style={styles.contentContainer}>
+        <WebView
+          source={{ html: `
+            <html>
+              <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                  body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    line-height: 1.6;
+                    color: #374151;
+                    margin: 0;
+                    padding: 16px;
+                  }
+                  h1, h2, h3 { color: #111827; }
+                  img { max-width: 100%; height: auto; }
+                  a { color: #3B82F6; }
+                </style>
+              </head>
+              <body>${news.content}</body>
+            </html>
+          `}}
+          style={styles.webView}
+          scrollEnabled={false}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+
+      {/* Engagement Metrics */}
+      <View style={styles.engagementContainer}>
+        <View style={styles.engagementRow}>
+          <TouchableOpacity style={styles.engagementButton}>
+            <Icon name="thumb-up" size={20} color="#6B7280" />
+            <Text style={styles.engagementText}>{news.likeCount}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.engagementButton}>
+            <Icon name="message-circle" size={20} color="#6B7280" />
+            <Text style={styles.engagementText}>{news.commentCount}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.engagementButton}>
+            <Icon name="share" size={20} color="#6B7280" />
+            <Text style={styles.engagementText}>{news.shareCount}</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.viewsContainer}>
+            <Icon name="eye" size={20} color="#6B7280" />
+            <Text style={styles.viewsText}>{news.viewCount} views</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Tags */}
+      <View style={styles.tagsContainer}>
+        {news.tags.map((tag, index) => (
+          <View key={index} style={styles.tag}>
+            <Text style={styles.tagText}>{tag}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Related Links */}
+      {news.relatedLinks && news.relatedLinks.length > 0 && (
+        <View style={styles.relatedLinksContainer}>
+          <Text style={styles.relatedLinksTitle}>Enlaces Relacionados</Text>
+          {news.relatedLinks.map((link, index) => (
+            <TouchableOpacity 
+              key={index} 
+              style={styles.relatedLink}
+              onPress={() => Linking.openURL(link.url)}
+            >
+              <Text style={styles.relatedLinkText}>{link.title}</Text>
+              <Icon name="external-link" size={16} color="#3B82F6" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  header: {
+    padding: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+    lineHeight: 32,
+    marginBottom: 16,
+  },
+  metaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  authorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  authorLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  authorName: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  publishDate: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  readTime: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  imageContainer: {
+    height: 240,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  featuredImage: {
+    width: '100%',
+    height: '100%',
+  },
+  contentContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+  },
+  webView: {
+    minHeight: 200,
+    backgroundColor: 'transparent',
+  },
+  engagementContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  engagementRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  engagementButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  engagementText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  viewsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewsText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  tag: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  relatedLinksContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 32,
+  },
+  relatedLinksTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  relatedLink: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  relatedLinkText: {
+    fontSize: 14,
+    color: '#3B82F6',
+    flex: 1,
+  },
+});
+```
+
+**Dashboard News Carousel**
+```typescript
+import { FlatList, View, Text, TouchableOpacity } from 'react-native';
+import { Card } from '../ui/Card';
+
+const DashboardNewsCarousel = () => {
+  const [companyNews, setCompanyNews] = useState([]);
+  const [governmentNews, setGovernmentNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNews = async () => {
+    try {
+      const [companyResponse, govResponse] = await Promise.all([
+        fetch('/api/news?type=company&featured=true&targetAudience=YOUTH&limit=6'),
+        fetch('/api/news?type=government&targetAudience=YOUTH&limit=6')
+      ]);
+      
+      const companyData = await companyResponse.json();
+      const govData = await govResponse.json();
+      
+      setCompanyNews(companyData.news || []);
+      setGovernmentNews(govData.news || []);
+    } catch (error) {
+      console.error('Error fetching news:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderNewsSection = (title, data, iconName, color) => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.iconContainer, { backgroundColor: color }]}>
+          <Icon name={iconName} size={16} color="white" />
+        </View>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      
+      <FlatList
+        data={data.slice(0, 3)}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        renderItem={({ item, index }) => (
+          <CompactNewsCard 
+            news={item} 
+            featured={index === 0}
+            onPress={(id) => navigation.navigate('NewsDetail', { newsId: id })}
+          />
+        )}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.horizontalList}
+      />
+    </View>
+  );
+
+  if (loading) return <NewsCarouselSkeleton />;
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Centro de Noticias</Text>
+        <Text style={styles.subtitle}>
+          Mantente informado sobre las últimas novedades
+        </Text>
+      </View>
+
+      {renderNewsSection(
+        'Noticias Empresariales',
+        companyNews,
+        'building',
+        '#3B82F6'
+      )}
+
+      {renderNewsSection(
+        'Noticias Institucionales',
+        governmentNews,
+        'shield',
+        '#10B981'
+      )}
+
+      <TouchableOpacity 
+        style={styles.viewAllButton}
+        onPress={() => navigation.navigate('NewsList')}
+      >
+        <Text style={styles.viewAllText}>Ver Todas las Noticias</Text>
+        <Icon name="arrow-right" size={16} color="#3B82F6" />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const CompactNewsCard = ({ news, featured, onPress }) => (
+  <TouchableOpacity 
+    style={[styles.compactCard, featured && styles.featuredCard]}
+    onPress={() => onPress(news.id)}
+  >
+    <Image 
+      source={{ uri: news.imageUrl }} 
+      style={[styles.compactImage, featured && styles.featuredImage]}
+    />
+    <View style={styles.compactContent}>
+      <Text 
+        style={[styles.compactTitle, featured && styles.featuredTitle]}
+        numberOfLines={featured ? 3 : 2}
+      >
+        {news.title}
+      </Text>
+      <View style={styles.compactMeta}>
+        <Text style={styles.compactAuthor}>{news.authorName}</Text>
+        <Text style={styles.compactDate}>
+          {formatTimeAgo(news.publishedAt)}
+        </Text>
+      </View>
+    </View>
+  </TouchableOpacity>
+);
+```
+
+### Navigation Integration
+
+#### React Navigation Setup
+```typescript
+// News Stack Navigator
+const NewsStack = createStackNavigator();
+
+const NewsNavigator = () => (
+  <NewsStack.Navigator>
+    <NewsStack.Screen 
+      name="NewsList" 
+      component={NewsListingScreen}
+      options={{
+        title: 'Centro de Noticias',
+        headerStyle: { backgroundColor: '#3B82F6' },
+        headerTintColor: 'white',
+        headerTitleStyle: { fontWeight: 'bold' },
+      }}
+    />
+    <NewsStack.Screen 
+      name="NewsDetail" 
+      component={NewsDetailScreen}
+      options={({ route }) => ({
+        title: 'Noticia',
+        headerStyle: { backgroundColor: '#3B82F6' },
+        headerTintColor: 'white',
+        headerBackTitleVisible: false,
+      })}
+    />
+  </NewsStack.Navigator>
+);
+
+// Integration with main tab navigator
+const TabNavigator = () => (
+  <Tab.Navigator>
+    <Tab.Screen 
+      name="Dashboard" 
+      component={DashboardScreen}
+      options={{
+        tabBarIcon: ({ color, size }) => (
+          <Icon name="home" size={size} color={color} />
+        ),
+      }}
+    />
+    <Tab.Screen 
+      name="News" 
+      component={NewsNavigator}
+      options={{
+        tabBarIcon: ({ color, size }) => (
+          <Icon name="newspaper" size={size} color={color} />
+        ),
+        headerShown: false,
+      }}
+    />
+    {/* Other tabs */}
+  </Tab.Navigator>
+);
+```
+
+### Performance Optimizations
+
+#### Image Optimization
+```typescript
+// Use react-native-fast-image for better image performance
+import FastImage from 'react-native-fast-image';
+
+const OptimizedNewsCard = ({ news }) => (
+  <FastImage
+    source={{
+      uri: news.imageUrl,
+      priority: FastImage.priority.normal,
+    }}
+    style={styles.image}
+    resizeMode={FastImage.resizeMode.cover}
+  />
+);
+
+// Implement image placeholder and error handling
+const NewsImage = ({ uri, style, ...props }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  return (
+    <View style={style}>
+      {loading && (
+        <View style={[style, styles.placeholder]}>
+          <ActivityIndicator size="small" color="#3B82F6" />
+        </View>
+      )}
+      
+      <FastImage
+        source={{ uri }}
+        style={[style, { opacity: loading ? 0 : 1 }]}
+        onLoad={() => setLoading(false)}
+        onError={() => {
+          setLoading(false);
+          setError(true);
+        }}
+        {...props}
+      />
+      
+      {error && (
+        <View style={[style, styles.errorState]}>
+          <Icon name="image" size={24} color="#9CA3AF" />
+        </View>
+      )}
+    </View>
+  );
+};
+```
+
+#### List Performance
+```typescript
+// Implement FlatList optimizations
+const NewsListing = ({ data }) => {
+  const renderItem = useCallback(({ item }) => (
+    <NewsCard news={item} />
+  ), []);
+
+  const keyExtractor = useCallback((item) => item.id, []);
+
+  const getItemLayout = useCallback((data, index) => ({
+    length: ITEM_HEIGHT,
+    offset: ITEM_HEIGHT * index,
+    index,
+  }), []);
+
+  return (
+    <FlatList
+      data={data}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      getItemLayout={getItemLayout}
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={10}
+      windowSize={10}
+      initialNumToRender={10}
+      updateCellsBatchingPeriod={50}
+    />
+  );
+};
+```
+
+### Key Implementation Notes
+
+1. **Read-Only Access**: YOUTH users have read-only access to published news
+2. **Categorized Display**: Two main categories (Company vs Institutional)
+3. **Rich Content**: HTML content rendering with WebView
+4. **Engagement Metrics**: Display views, likes, comments (read-only for youth)
+5. **Image Handling**: Proper image optimization and error states
+6. **Navigation**: Seamless between listing and detail views
+7. **Dashboard Integration**: Featured news carousel on dashboard
+8. **Performance**: Optimized for mobile with lazy loading and caching
+
+The news system provides YOUTH users with access to relevant information from companies and government institutions, supporting their engagement with opportunities and staying informed about relevant developments.
+
 ## Authentication & Authorization
 
 ### Authentication Flow
@@ -1476,6 +2742,32 @@ const handleCancelApplication = async () => {
 - [ ] File access verification and error handling
 - [ ] Offline state management and sync
 
+## Critical Implementation Notes
+
+### Document Requirements
+**CRITICAL**: All job applications MUST have at least one document (CV or cover letter PDF) to be submitted successfully. The mobile app must enforce this requirement and guide users through document upload when missing.
+
+### Application Status Flow
+The complete application lifecycle follows this flow:
+1. **SENT** - Initial application submission
+2. **UNDER_REVIEW** - Company is reviewing the application
+3. **PRE_SELECTED** - Candidate has been shortlisted
+4. **REJECTED** - Application was not successful
+5. **HIRED** - Candidate was selected for the position
+
+### Real-time Features
+The web application implements several real-time features that must be replicated:
+- **Application Status Checking**: Every job card checks if the user has already applied
+- **Chat Auto-refresh**: Messages refresh every 30 seconds
+- **Document Status Verification**: Real-time checking of CV/cover letter availability
+
+### Error Handling Priorities
+1. **Authentication errors** (401) - Redirect to login
+2. **Document validation errors** - Open CV check modal
+3. **Required question errors** - Highlight missing required fields
+4. **Network errors** - Provide retry functionality
+5. **File upload errors** - Clear feedback with retry options
+
 ## Testing Strategy
 
 ### Unit Tests
@@ -1497,7 +2789,7 @@ const handleCancelApplication = async () => {
 
 ## Conclusion
 
-This specification provides a comprehensive blueprint for implementing the CEMSE jobs and my-applications features in React Native. The mobile implementation should maintain feature parity with the web version while optimizing for mobile-specific patterns and user experience.
+This specification provides a comprehensive blueprint for implementing the CEMSE jobs, my-applications, and news features in React Native. The mobile implementation should maintain feature parity with the web version while optimizing for mobile-specific patterns and user experience.
 
 Key success factors:
 1. **Faithful Replication**: Maintain all existing functionality

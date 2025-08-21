@@ -63,6 +63,8 @@ export default function JobDetailScreen() {
         const apiJob = response.data;
         const transformedJob: JobOffer = {
           ...apiJob,
+          companyData: apiJob.company,
+          company: typeof apiJob.company === 'string' ? apiJob.company : apiJob.company?.name || 'Sin especificar',
           companyRating: apiJob.company?.rating || 4.0,
           workMode: apiJob.workModality === 'ON_SITE' ? 'Presencial' : 
                     apiJob.workModality === 'REMOTE' ? 'Remoto' : 'Híbrido',
@@ -75,7 +77,6 @@ export default function JobDetailScreen() {
           viewCount: apiJob.viewsCount,
           isFeatured: apiJob.featured,
           isFavorite: false, // TODO: Implement favorites
-          company: apiJob.company?.name || 'Sin especificar',
           companySize: apiJob.company?.size,
           industry: apiJob.company?.sector,
           companyDescription: apiJob.company?.description,
@@ -95,68 +96,7 @@ export default function JobDetailScreen() {
     }
   };
 
-  // Mock job data for fallback
-  const mockJob: JobOffer = {
-    id: id || '1',
-    title: 'Desarrollador Frontend React',
-    company: {
-      id: '1',
-      name: 'TechCorp Bolivia',
-      rating: 4.5,
-      sector: 'Tecnología'
-    },
-    companyRating: 4.5,
-    location: 'Cochabamba, Bolivia',
-    municipality: 'Cochabamba',
-    department: 'Cochabamba',
-    workMode: 'Híbrido',
-    workModality: 'HYBRID' as const,
-    workSchedule: 'Tiempo completo',
-    contractType: 'FULL_TIME' as const,
-    description: 'Únete a nuestro equipo para desarrollar aplicaciones web modernas con React y TypeScript. Buscamos a alguien apasionado por la tecnología y el desarrollo frontend.',
-    requirements: ['2+ años de experiencia en React', 'Conocimiento en TypeScript', 'Experiencia con Git y control de versiones', 'Conocimientos básicos de testing'],
-    skillsRequired: ['React', 'JavaScript', 'TypeScript', 'HTML', 'CSS', 'Git'],
-    desiredSkills: [],
-    skills: ['React', 'JavaScript', 'TypeScript', 'HTML', 'CSS', 'Git'],
-    experienceLevel: 'MID_LEVEL' as const,
-    jobType: 'Tiempo completo',
-    salaryMin: 3500,
-    salaryMax: 4500,
-    salaryCurrency: 'Bs.',
-    currency: 'Bs.',
-    publishedDate: 'Hace 2 días',
-    publishedAt: new Date().toISOString(),
-    applicationDeadline: '15 ago 2025',
-    applicantCount: 47,
-    applicationsCount: 47,
-    viewCount: 234,
-    viewsCount: 234,
-    isFeatured: true,
-    featured: true,
-    isFavorite: false,
-    isActive: true,
-    status: 'ACTIVE' as const,
-    companyId: '1',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    responsibilities: [
-      'Desarrollar interfaces de usuario atractivas y funcionales',
-      'Colaborar con el equipo de diseño para implementar mockups',
-      'Escribir código limpio y mantenible',
-      'Participar en revisiones de código y metodologías ágiles',
-      'Optimizar aplicaciones para máximo rendimiento'
-    ],
-    benefits: [
-      'Seguro médico privado',
-      'Horario flexible',
-      'Trabajo remoto parcial',
-      'Capacitación continua',
-      'Ambiente laboral moderno'
-    ],
-    companySize: '50-200 empleados',
-    industry: 'Tecnología',
-    companyDescription: 'TechCorp Bolivia es una empresa líder en desarrollo de software con más de 10 años de experiencia en el mercado boliviano. Nos especializamos en soluciones web y móviles para empresas de diversos sectores.'
-  };
+  // Removed mock job data - now using only real API data
 
   const handleFavoritePress = async () => {
     if (!job) return;
@@ -178,7 +118,7 @@ export default function JobDetailScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Mira esta oferta de trabajo: ${displayJob.title} en ${displayJob.company}`,
+        message: job ? `Mira esta oferta de trabajo: ${job.title} en ${job.company}` : 'Oferta de trabajo',
         title: 'Oferta de Trabajo - CEMSE'
       });
     } catch (error) {
@@ -332,7 +272,7 @@ export default function JobDetailScreen() {
     );
   }
 
-  if (error || !job) {
+  if (error) {
     return (
       <ThemedView style={[styles.container, { backgroundColor }]}>
         <Stack.Screen
@@ -347,7 +287,7 @@ export default function JobDetailScreen() {
             Error al cargar el empleo
           </ThemedText>
           <ThemedText style={[styles.errorDescription, { color: secondaryTextColor }]}>
-            {error || 'No se pudo encontrar la información del empleo'}
+            {error}
           </ThemedText>
           <ThemedButton
             title="Reintentar"
@@ -366,13 +306,41 @@ export default function JobDetailScreen() {
     );
   }
 
-  const displayJob = job || mockJob;
+  if (!job) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <Stack.Screen
+          options={{
+            title: 'No encontrado',
+            headerShown: true,
+          }}
+        />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#FF9500" />
+          <ThemedText style={[styles.errorTitle, { color: textColor }]}>
+            Empleo no encontrado
+          </ThemedText>
+          <ThemedText style={[styles.errorDescription, { color: secondaryTextColor }]}>
+            No se pudo encontrar la información de este empleo. Es posible que haya sido eliminado.
+          </ThemedText>
+          <ThemedButton
+            title="Volver"
+            onPress={() => router.back()}
+            type="primary"
+            style={styles.retryButton}
+          />
+        </View>
+      </ThemedView>
+    );
+  }
+
+  // Using job directly instead of job alias
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <Stack.Screen
         options={{
-          title: displayJob.title,
+          title: job.title,
           headerShown: true,
           headerRight: () => (
             <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
@@ -401,23 +369,23 @@ export default function JobDetailScreen() {
           <View style={styles.headerInfo}>
             <View style={styles.titleRow}>
               <ThemedText type="title" style={[styles.jobTitle, { color: textColor }]}>
-                {displayJob.title}
+                {job.title}
               </ThemedText>
-              {displayJob.isFeatured && (
+              {job.isFeatured && (
                 <Ionicons name="star" size={20} color="#FFD60A" />
               )}
             </View>
 
             <View style={styles.companyInfo}>
               <ThemedText style={[styles.companyName, { color: textColor }]}>
-                {displayJob.company?.name || 'Sin especificar'}
+                {job.company}
               </ThemedText>
               <View style={styles.rating}>
                 <View style={styles.stars}>
-                  {renderStars(displayJob.companyRating)}
+                  {renderStars(job.companyRating)}
                 </View>
                 <ThemedText style={[styles.ratingText, { color: secondaryTextColor }]}>
-                  {displayJob.companyRating} ({displayJob.viewCount} reseñas)
+                  {job.companyRating} ({job.viewCount} reseñas)
                 </ThemedText>
               </View>
             </View>
@@ -425,14 +393,14 @@ export default function JobDetailScreen() {
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={16} color={secondaryTextColor} />
               <ThemedText style={[styles.locationText, { color: secondaryTextColor }]}>
-                {displayJob.location} • {displayJob.workMode}
+                {job.location} • {job.workMode}
               </ThemedText>
             </View>
 
             <View style={styles.salaryRow}>
               <Ionicons name="cash-outline" size={16} color={iconColor} />
               <ThemedText style={[styles.salaryText, { color: iconColor }]}>
-                {displayJob.currency} {displayJob.salaryMin}-{displayJob.salaryMax}
+                {job.currency} {job.salaryMin}-{job.salaryMax}
               </ThemedText>
             </View>
 
@@ -440,22 +408,22 @@ export default function JobDetailScreen() {
               <View style={styles.metaItem}>
                 <Ionicons name="time-outline" size={14} color={secondaryTextColor} />
                 <ThemedText style={[styles.metaText, { color: secondaryTextColor }]}>
-                  {displayJob.publishedDate}
+                  {job.publishedDate}
                 </ThemedText>
               </View>
-              {displayJob.applicationDeadline && (
+              {job.applicationDeadline && (
                 <View style={styles.metaItem}>
                   <Ionicons name="calendar-outline" size={14} color={secondaryTextColor} />
                   <ThemedText style={[styles.metaText, { color: secondaryTextColor }]}>
-                    Fecha límite: {displayJob.applicationDeadline}
+                    Fecha límite: {job.applicationDeadline}
                   </ThemedText>
                 </View>
               )}
             </View>
 
             <View style={styles.badges}>
-              <StatusBadge status={mapContractTypeToSpanish(displayJob.contractType) as any} />
-              <StatusBadge status={mapExperienceLevelToSpanish(displayJob.experienceLevel) as any} />
+              <StatusBadge status={mapContractTypeToSpanish(job.contractType) as any} />
+              <StatusBadge status={mapExperienceLevelToSpanish(job.experienceLevel) as any} />
             </View>
           </View>
         </View>

@@ -58,10 +58,11 @@ export interface JobOffer {
   expiresAt?: string;
   publishedAt: string;
   companyId: string;
-  company?: Company;
+  companyData?: Company;
   createdAt: string;
   updatedAt: string;
   // UI-specific properties for compatibility with existing components
+  company: string; // Company name as string for UI display
   companyRating: number;
   workMode: 'Presencial' | 'Híbrido' | 'Remoto';
   skills: string[];
