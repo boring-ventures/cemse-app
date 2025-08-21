@@ -172,6 +172,38 @@ export default function PrivateLayout() {
           tabBarStyle: { display: "none" },
         }}
       />
+      <Tabs.Screen
+        name="cv/index"
+        options={{
+          headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="entrepreneurship/[id]"
+        options={{
+          headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="entrepreneurship/[id]/edit"
+        options={{
+          headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="chat/index"
+        options={{
+          headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
     </Tabs>
   );
 }

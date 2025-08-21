@@ -143,6 +143,7 @@ export interface CollapsedSections {
   socialLinks: boolean;
   workExperience: boolean;
   projects: boolean;
+  activities: boolean;
   skills: boolean;
   interests: boolean;
 }
@@ -350,6 +351,7 @@ export const DEFAULT_COLLAPSED_SECTIONS: CollapsedSections = {
   socialLinks: false,
   workExperience: false,
   projects: false,
+  activities: false,
   skills: false,
   interests: false
 };

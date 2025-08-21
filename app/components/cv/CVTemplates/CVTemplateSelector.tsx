@@ -17,6 +17,7 @@ import Shimmer from '@/app/components/Shimmer';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { CVData } from '@/app/types/cv';
 import { pdfGenerator } from '@/app/services/pdfGenerator';
+import TemplatePreview from './TemplatePreview';
 
 interface CVTemplateSelectorProps {
   cvData: CVData | null;
@@ -271,15 +272,15 @@ const CVTemplateSelector: React.FC<CVTemplateSelectorProps> = ({
           
           <View style={styles.previewContent}>
             <ThemedText style={styles.previewText}>
-              Preview of your CV with the selected template will appear here.
-              This feature will show how your data looks in the chosen design.
+              Preview of your CV with the selected template and your actual data.
+              This shows how your information will look in the chosen design.
             </ThemedText>
             
-            {/* Placeholder preview */}
-            <View style={[styles.previewPlaceholder, { borderColor }]}>
-              <Ionicons name="document-text-outline" size={48} color={borderColor} />
-              <ThemedText style={styles.placeholderText}>CV Preview</ThemedText>
-            </View>
+            {/* Real template preview */}
+            <TemplatePreview 
+              cvData={cvData}
+              templateId={selectedTemplate}
+            />
           </View>
         </ThemedView>
       </View>
@@ -452,19 +453,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
     lineHeight: 20,
-  },
-  previewPlaceholder: {
-    height: 200,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
-  placeholderText: {
-    fontSize: 16,
-    opacity: 0.5,
   },
   actionsSection: {
     paddingHorizontal: 20,

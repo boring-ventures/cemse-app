@@ -25,8 +25,14 @@ import {
 
 // Import section components
 import PersonalInfoSection from './PersonalInfoSection';
+import ProfessionalSummarySection from './ProfessionalSummarySection';
 import EducationSection from './EducationSection';
 import SkillsSection from './SkillsSection';
+import LanguagesSection from './LanguagesSection';
+import SocialLinksSection from './SocialLinksSection';
+import WorkExperienceSection from './WorkExperienceSection';
+import ProjectsSection from './ProjectsSection';
+import ActivitiesSection from './ActivitiesSection';
 import InterestsSection from './InterestsSection';
 import ExperienceSection from './ExperienceSection';
 import CVTemplateSelector from './CVTemplates/CVTemplateSelector';
@@ -171,6 +177,78 @@ const CVManager: React.FC = () => {
     }
   }, [cvData, updateCVData]);
 
+  // Professional summary handler
+  const handleSummaryChange = useCallback(async (professionalSummary: string) => {
+    if (!cvData) return;
+
+    try {
+      await updateCVData({ professionalSummary });
+    } catch (updateError) {
+      console.error('Error updating professional summary:', updateError);
+      Alert.alert('Error', 'Failed to update professional summary');
+    }
+  }, [cvData, updateCVData]);
+
+  // Languages handler
+  const handleLanguagesChange = useCallback(async (languages: any[]) => {
+    if (!cvData) return;
+
+    try {
+      await updateCVData({ languages });
+    } catch (updateError) {
+      console.error('Error updating languages:', updateError);
+      Alert.alert('Error', 'Failed to update languages');
+    }
+  }, [cvData, updateCVData]);
+
+  // Social links handler
+  const handleSocialLinksChange = useCallback(async (socialLinks: any[]) => {
+    if (!cvData) return;
+
+    try {
+      await updateCVData({ socialLinks });
+    } catch (updateError) {
+      console.error('Error updating social links:', updateError);
+      Alert.alert('Error', 'Failed to update social links');
+    }
+  }, [cvData, updateCVData]);
+
+  // Work experience handler
+  const handleWorkExperienceChange = useCallback(async (workExperience: any[]) => {
+    if (!cvData) return;
+
+    try {
+      await updateCVData({ workExperience });
+    } catch (updateError) {
+      console.error('Error updating work experience:', updateError);
+      Alert.alert('Error', 'Failed to update work experience');
+    }
+  }, [cvData, updateCVData]);
+
+  // Projects handler
+  const handleProjectsChange = useCallback(async (projects: any[]) => {
+    if (!cvData) return;
+
+    try {
+      await updateCVData({ projects });
+    } catch (updateError) {
+      console.error('Error updating projects:', updateError);
+      Alert.alert('Error', 'Failed to update projects');
+    }
+  }, [cvData, updateCVData]);
+
+  // Activities handler
+  const handleActivitiesChange = useCallback(async (activities: any[]) => {
+    if (!cvData) return;
+
+    try {
+      await updateCVData({ activities });
+    } catch (updateError) {
+      console.error('Error updating activities:', updateError);
+      Alert.alert('Error', 'Failed to update activities');
+    }
+  }, [cvData, updateCVData]);
+
   // Toggle collapsible sections
   const toggleSection = useCallback((section: keyof typeof DEFAULT_COLLAPSED_SECTIONS) => {
     setState(prev => ({
@@ -257,6 +335,11 @@ const CVManager: React.FC = () => {
         uploadError={state.uploadError}
       />
 
+      <ProfessionalSummarySection
+        cvData={cvData}
+        onSummaryChange={handleSummaryChange}
+      />
+
       {/* Collapsible Sections */}
       <EducationSection
         cvData={cvData}
@@ -273,6 +356,41 @@ const CVManager: React.FC = () => {
         onRemoveSkill={removeSkill}
         isCollapsed={state.collapsedSections.skills}
         onToggle={() => toggleSection('skills')}
+      />
+
+      <LanguagesSection
+        cvData={cvData}
+        onLanguagesChange={handleLanguagesChange}
+        isCollapsed={state.collapsedSections.languages}
+        onToggle={() => toggleSection('languages')}
+      />
+
+      <SocialLinksSection
+        cvData={cvData}
+        onSocialLinksChange={handleSocialLinksChange}
+        isCollapsed={state.collapsedSections.socialLinks}
+        onToggle={() => toggleSection('socialLinks')}
+      />
+
+      <WorkExperienceSection
+        cvData={cvData}
+        onWorkExperienceChange={handleWorkExperienceChange}
+        isCollapsed={state.collapsedSections.workExperience}
+        onToggle={() => toggleSection('workExperience')}
+      />
+
+      <ProjectsSection
+        cvData={cvData}
+        onProjectsChange={handleProjectsChange}
+        isCollapsed={state.collapsedSections.projects}
+        onToggle={() => toggleSection('projects')}
+      />
+
+      <ActivitiesSection
+        cvData={cvData}
+        onActivitiesChange={handleActivitiesChange}
+        isCollapsed={state.collapsedSections.activities}
+        onToggle={() => toggleSection('activities')}
       />
 
       <InterestsSection

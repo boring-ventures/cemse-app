@@ -4,8 +4,11 @@ import {
   StyleSheet,
   Switch,
   ScrollView,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 
 import { ThemedText } from '@/app/components/ThemedText';
 import { ThemedView } from '@/app/components/ThemedView';
@@ -13,6 +16,7 @@ import { CVFormField } from './CVFormField';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
 import CollapsibleSection from './CollapsibleSection';
 import DynamicList from './DynamicList';
+import EditModal from './EditModal';
 import {
   CVData,
   EducationHistoryItem,
@@ -46,6 +50,14 @@ const EducationSection: React.FC<EducationSectionProps> = ({
 
   const education = cvData?.education;
 
+  // Modal states for editing
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showAchievementModal, setShowAchievementModal] = useState(false);
+  const [editingHistoryIndex, setEditingHistoryIndex] = useState<number | null>(null);
+  const [editingAchievementIndex, setEditingAchievementIndex] = useState<number | null>(null);
+  const [editingHistoryItem, setEditingHistoryItem] = useState<EducationHistoryItem | null>(null);
+  const [editingAchievementItem, setEditingAchievementItem] = useState<AcademicAchievement | null>(null);
+
   // Handle field changes
   const handleFieldChange = async (field: string, value: any) => {
     try {
@@ -71,6 +83,70 @@ const EducationSection: React.FC<EducationSectionProps> = ({
     } catch (error) {
       console.error('Error updating academic achievements:', error);
     }
+  };
+
+  // Education History edit handlers
+  const handleEditEducationHistory = (index: number) => {
+    const item = education?.educationHistory?.[index];
+    if (item) {
+      setEditingHistoryItem(item);
+      setEditingHistoryIndex(index);
+      setShowHistoryModal(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handleEditHistorySubmit = async (updatedItem: EducationHistoryItem) => {
+    if (editingHistoryIndex !== null) {
+      try {
+        const newHistory = [...(education?.educationHistory || [])];
+        newHistory[editingHistoryIndex] = updatedItem;
+        await handleEducationHistoryChange(newHistory);
+        handleCloseHistoryModal();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (error) {
+        console.error('Error updating education history:', error);
+        Alert.alert('Error', 'No se pudo actualizar el historial educativo');
+      }
+    }
+  };
+
+  const handleCloseHistoryModal = () => {
+    setShowHistoryModal(false);
+    setEditingHistoryIndex(null);
+    setEditingHistoryItem(null);
+  };
+
+  // Academic Achievement edit handlers
+  const handleEditAchievement = (index: number) => {
+    const item = education?.academicAchievements?.[index];
+    if (item) {
+      setEditingAchievementItem(item);
+      setEditingAchievementIndex(index);
+      setShowAchievementModal(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handleEditAchievementSubmit = async (updatedItem: AcademicAchievement) => {
+    if (editingAchievementIndex !== null) {
+      try {
+        const newAchievements = [...(education?.academicAchievements || [])];
+        newAchievements[editingAchievementIndex] = updatedItem;
+        await handleAchievementsChange(newAchievements);
+        handleCloseAchievementModal();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (error) {
+        console.error('Error updating academic achievement:', error);
+        Alert.alert('Error', 'No se pudo actualizar el logro académico');
+      }
+    }
+  };
+
+  const handleCloseAchievementModal = () => {
+    setShowAchievementModal(false);
+    setEditingAchievementIndex(null);
+    setEditingAchievementItem(null);
   };
 
   // Education History Form Component
@@ -148,21 +224,23 @@ const EducationSection: React.FC<EducationSectionProps> = ({
         />
 
         <View style={styles.formActions}>
-          <ThemedView 
-            style={[styles.actionButton, styles.cancelButton, { borderColor }]}
-            onTouchEnd={onCancel}
-          >
-            <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
-          </ThemedView>
+          {onCancel && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton, { borderColor }]}
+              onPress={onCancel}
+            >
+              <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+            </TouchableOpacity>
+          )}
           
-          <ThemedView 
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: tintColor }]}
-            onTouchEnd={handleSubmit}
+            onPress={handleSubmit}
           >
             <ThemedText style={styles.submitButtonText}>
               {isEditing ? 'Update' : 'Add'}
             </ThemedText>
-          </ThemedView>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     );
@@ -223,27 +301,30 @@ const EducationSection: React.FC<EducationSectionProps> = ({
         />
 
         <View style={styles.formActions}>
-          <ThemedView 
-            style={[styles.actionButton, styles.cancelButton, { borderColor }]}
-            onTouchEnd={onCancel}
-          >
-            <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
-          </ThemedView>
+          {onCancel && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton, { borderColor }]}
+              onPress={onCancel}
+            >
+              <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+            </TouchableOpacity>
+          )}
           
-          <ThemedView 
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: tintColor }]}
-            onTouchEnd={handleSubmit}
+            onPress={handleSubmit}
           >
             <ThemedText style={styles.submitButtonText}>
               {isEditing ? 'Update' : 'Add'}
             </ThemedText>
-          </ThemedView>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     );
   };
 
   return (
+    <>
     <CollapsibleSection
       title="Education"
       isCollapsed={isCollapsed}
@@ -370,11 +451,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
               const newHistory = [...(education?.educationHistory || []), item];
               handleEducationHistoryChange(newHistory);
             }}
-            onEdit={(index, item) => {
-              const newHistory = [...(education?.educationHistory || [])];
-              newHistory[index] = item;
-              handleEducationHistoryChange(newHistory);
-            }}
+            onEdit={(index, item) => handleEditEducationHistory(index)}
             onDelete={(index) => {
               const newHistory = (education?.educationHistory || []).filter((_, i) => i !== index);
               handleEducationHistoryChange(newHistory);
@@ -403,11 +480,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
               const newAchievements = [...(education?.academicAchievements || []), item];
               handleAchievementsChange(newAchievements);
             }}
-            onEdit={(index, item) => {
-              const newAchievements = [...(education?.academicAchievements || [])];
-              newAchievements[index] = item;
-              handleAchievementsChange(newAchievements);
-            }}
+            onEdit={(index, item) => handleEditAchievement(index)}
             onDelete={(index) => {
               const newAchievements = (education?.academicAchievements || []).filter((_, i) => i !== index);
               handleAchievementsChange(newAchievements);
@@ -419,7 +492,39 @@ const EducationSection: React.FC<EducationSectionProps> = ({
         </View>
       </View>
     </CollapsibleSection>
-  );
+
+    {/* Education History Edit Modal */}
+    <EditModal
+      visible={showHistoryModal}
+      title="Editar Historial Educativo"
+      onClose={handleCloseHistoryModal}
+    >
+      {editingHistoryItem && (
+        <EducationHistoryForm
+          onSubmit={handleEditHistorySubmit}
+          onCancel={handleCloseHistoryModal}
+          initialData={editingHistoryItem}
+          isEditing={true}
+        />
+      )}
+    </EditModal>
+
+    {/* Academic Achievement Edit Modal */}
+    <EditModal
+      visible={showAchievementModal}
+      title="Editar Logro Académico"
+      onClose={handleCloseAchievementModal}
+    >
+      {editingAchievementItem && (
+        <AchievementForm
+          onSubmit={handleEditAchievementSubmit}
+          onCancel={handleCloseAchievementModal}
+          initialData={editingAchievementItem}
+          isEditing={true}
+        />
+      )}
+    </EditModal>
+  </>);
 };
 
 const styles = StyleSheet.create({

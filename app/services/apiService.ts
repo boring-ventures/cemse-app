@@ -390,6 +390,35 @@ class ApiService {
   }
 
   /**
+   * Get profile completion percentage
+   */
+  async getProfileCompletion(token: string): Promise<ApiResponse<{ completionPercentage: number; missingFields: string[] }>> {
+    return this.authenticatedRequest<{ completionPercentage: number; missingFields: string[] }>('/profile/completion', token);
+  }
+
+  /**
+   * Upload document (CV or cover letter)
+   */
+  async uploadDocument(token: string, formData: FormData): Promise<ApiResponse<{ url: string; type: string }>> {
+    return this.authenticatedRequest<{ url: string; type: string }>('/profile/upload-document', token, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        // Don't set Content-Type for FormData, let browser set it with boundary
+      },
+    });
+  }
+
+  /**
+   * Delete document (CV or cover letter)
+   */
+  async deleteDocument(token: string, type: 'cv' | 'coverLetter'): Promise<ApiResponse<void>> {
+    return this.authenticatedRequest<void>(`/profile/documents/${type}`, token, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
    * Get user's bookmarked jobs
    */
   async getBookmarkedJobs(token: string): Promise<ApiResponse<string[]>> {
