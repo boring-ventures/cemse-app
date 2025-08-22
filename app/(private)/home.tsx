@@ -1,6 +1,15 @@
 import { DashboardHeader } from '@/app/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/app/components/dashboard/MetricCard';
 import { QuickAccessCard } from '@/app/components/dashboard/QuickAccessCard';
+import { NewsCard, NewsItem } from '@/app/components/dashboard/NewsCard';
+import { CVBuilderShortcut } from '@/app/components/dashboard/CVBuilderShortcut';
+import { 
+  DashboardHeaderSkeleton, 
+  MetricCardSkeleton, 
+  QuickAccessCardSkeleton,
+  NewsCardSkeleton,
+  CVBuilderShortcutSkeleton
+} from '@/app/components/dashboard/DashboardSkeleton';
 import { ThemedText } from '@/app/components/ThemedText';
 import { ThemedView } from '@/app/components/ThemedView';
 import { useAuthStore } from '@/app/store/authStore';
@@ -8,13 +17,16 @@ import { DashboardMetric, QuickAccessCard as QuickAccessCardType, UserDashboardD
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View, Alert } from 'react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { profile, user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<UserDashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newsData, setNewsData] = useState<NewsItem[]>([]);
+  const [cvProgress, setCvProgress] = useState({ completionPercentage: 0, hasCV: false });
 
   // If not authenticated, ensure redirect happens (handled by _layout.tsx)
   useEffect(() => {
@@ -23,9 +35,39 @@ export default function HomeScreen() {
     }
   }, [isAuthenticated, user, router]);
 
-  // Mock data generation based on user profile
+  // Generate mock news data
+  const generateNewsData = useCallback((): NewsItem[] => {
+    return [
+      {
+        id: '1',
+        type: 'business',
+        title: 'Nueva plataforma de empleos para jóvenes profesionales en Chile',
+        summary: 'Gobierno lanza iniciativa para conectar empresas con talentos emergentes',
+        date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+        priority: 'high',
+      },
+      {
+        id: '2',
+        type: 'institutional',
+        title: 'Programa de capacitación en habilidades digitales disponible',
+        summary: 'Certificaciones gratuitas en programación y diseño UX/UI para jóvenes',
+        date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
+        priority: 'medium',
+      },
+      {
+        id: '3',
+        type: 'business',
+        title: 'Empresas tech incrementan contratación de desarrolladores junior',
+        summary: 'Sector tecnológico muestra crecimiento del 40% en ofertas laborales',
+        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+        priority: 'medium',
+      },
+    ];
+  }, []);
+
+  // Mock data generation based on user data
   const generateDashboardData = useCallback((): UserDashboardData => {
-    const firstName = profile?.first_name || 'Usuario';
+    const username = user?.username || 'Usuario';
     
     const metrics: DashboardMetric[] = [
       {
@@ -35,22 +77,6 @@ export default function HomeScreen() {
         icon: 'document-text-outline',
         trend: 'up',
         trendValue: '+2'
-      },
-      {
-        id: 'courses',
-        title: 'Cursos en Progreso',
-        value: 2,
-        icon: 'school-outline',
-        trend: 'stable',
-        trendValue: '0'
-      },
-      {
-        id: 'projects',
-        title: 'Proyecto Emprendimiento',
-        value: 1,
-        icon: 'bulb-outline',
-        trend: 'up',
-        trendValue: '+1'
       },
       {
         id: 'response_rate',
@@ -206,19 +232,39 @@ export default function HomeScreen() {
     ];
 
     return {
-      welcomeMessage: `¡Bienvenido ${firstName}!`,
+      welcomeMessage: `¡Hola ${username}!`,
       subtitle: 'Explora oportunidades de empleo, desarrolla tus habilidades y construye tu futuro profesional',
       metrics,
       quickAccessCards
     };
-  }, [profile, router]);
+  }, [user, router]);
 
   // Initialize dashboard data
   useEffect(() => {
-    if (profile) {
-      setDashboardData(generateDashboardData());
+    const loadDashboardData = async () => {
+      setIsLoading(true);
+      
+      // Simulate loading delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      
+      if (user) {
+        setDashboardData(generateDashboardData());
+        setNewsData(generateNewsData());
+        
+        // Mock CV progress - in real app, this would come from API
+        setCvProgress({
+          completionPercentage: Math.floor(Math.random() * 80) + 20, // Random between 20-100
+          hasCV: Math.random() > 0.3, // 70% chance of having a CV
+        });
+      }
+      
+      setIsLoading(false);
+    };
+    
+    if (user) {
+      loadDashboardData();
     }
-  }, [profile, generateDashboardData]);
+  }, [user, generateDashboardData, generateNewsData]);
 
   // Pull to refresh handler
   const onRefresh = useCallback(async () => {
@@ -228,16 +274,67 @@ export default function HomeScreen() {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Regenerate data (in real app, fetch from API)
-    setDashboardData(generateDashboardData());
+    if (user) {
+      setDashboardData(generateDashboardData());
+      setNewsData(generateNewsData());
+      
+      // Update CV progress
+      setCvProgress({
+        completionPercentage: Math.floor(Math.random() * 80) + 20,
+        hasCV: Math.random() > 0.3,
+      });
+    }
     
     setIsRefreshing(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [generateDashboardData]);
+  }, [user, generateDashboardData, generateNewsData]);
 
-  if (!dashboardData) {
+  // Handle news item press
+  const handleNewsPress = useCallback((news: NewsItem) => {
+    Alert.alert(
+      news.title,
+      news.summary,
+      [
+        { text: 'Cerrar', style: 'cancel' },
+        { text: 'Leer más', onPress: () => {
+          // In real app, navigate to news detail or open URL
+          console.log('Open news:', news.url || news.id);
+        }},
+      ]
+    );
+  }, []);
+
+  // Loading state with skeletons
+  if (isLoading || !dashboardData) {
     return (
       <ThemedView style={styles.container}>
-        <ThemedText>Cargando dashboard...</ThemedText>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <DashboardHeaderSkeleton />
+          
+          <View style={styles.content}>
+            {/* Metrics Skeleton */}
+            <View style={styles.metricsSection}>
+              <View style={[styles.sectionTitleSkeleton, { backgroundColor: '#E0E0E0' }]} />
+              <View style={styles.metricsGrid}>
+                <MetricCardSkeleton />
+                <MetricCardSkeleton />
+              </View>
+            </View>
+
+            {/* CV Builder Shortcut Skeleton */}
+            <View style={styles.cvBuilderSection}>
+              <CVBuilderShortcutSkeleton />
+            </View>
+
+            {/* News Skeleton */}
+            <View style={styles.newsSection}>
+              <View style={[styles.sectionTitleSkeleton, { backgroundColor: '#E0E0E0' }]} />
+              <NewsCardSkeleton />
+              <NewsCardSkeleton />
+            </View>
+
+          </View>
+        </ScrollView>
       </ThemedView>
     );
   }
@@ -282,18 +379,28 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Quick Access Cards */}
-          <View style={styles.quickAccessSection}>
+          {/* CV Builder Shortcut */}
+          <View style={styles.cvBuilderSection}>
+            <CVBuilderShortcut
+              completionPercentage={cvProgress.completionPercentage}
+              hasCV={cvProgress.hasCV}
+            />
+          </View>
+
+          {/* News Section */}
+          <View style={styles.newsSection}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Acceso Rápido
+              Noticias
             </ThemedText>
-            {dashboardData.quickAccessCards.map((card) => (
-              <QuickAccessCard
-                key={card.id}
-                card={card}
+            {newsData.slice(0, 2).map((news) => (
+              <NewsCard
+                key={news.id}
+                news={news}
+                onPress={handleNewsPress}
               />
             ))}
           </View>
+
         </View>
       </ScrollView>
     </ThemedView>
@@ -325,9 +432,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginHorizontal: -6,
+    marginHorizontal: -8,
   },
   quickAccessSection: {
     marginBottom: 20,
+  },
+  cvBuilderSection: {
+    marginBottom: 30,
+  },
+  newsSection: {
+    marginBottom: 30,
+  },
+  sectionTitleSkeleton: {
+    width: 150,
+    height: 20,
+    borderRadius: 10,
+    marginBottom: 16,
+    marginHorizontal: 20,
   },
 }); 

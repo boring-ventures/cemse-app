@@ -64,6 +64,17 @@ export default function PrivateLayout() {
       />
 
       <Tabs.Screen
+        name="cv-builder"
+        options={{
+          title: "Mi CV",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="document-text-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Perfil",
@@ -142,6 +153,38 @@ export default function PrivateLayout() {
         name="entrepreneurship/mentors"
         options={{
           headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="cv-builder/editor"
+        options={{
+          headerTitle: "Editar CV",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="cv-builder/preview"
+        options={{
+          headerTitle: "Vista Previa",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="cv-builder/pdf-viewer"
+        options={{
+          headerTitle: "PDF Generado",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="cv-builder/template-selector"
+        options={{
+          headerTitle: "Seleccionar Plantilla",
           href: null,
           tabBarStyle: { display: "none" },
         }}
