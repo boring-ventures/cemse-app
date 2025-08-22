@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { useCV } from '@/app/hooks/useCV';
+import { useNetworkSync } from '@/app/hooks/useNetworkSync';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
 import Shimmer from '@/app/components/Shimmer';
 import { ThemedText } from '@/app/components/ThemedText';
@@ -39,6 +40,7 @@ import CVTemplateSelector from './CVTemplates/CVTemplateSelector';
 import CoverLetterEditor from './CoverLetter/CoverLetterEditor';
 import { CVCustomTabBar } from './CVCustomTabBar';
 import NetworkStatus from './NetworkStatus';
+import EmergencyClearButton from '../debug/EmergencyClearButton';
 
 /**
  * Main CV Manager Component
@@ -56,6 +58,8 @@ const CVManager: React.FC = () => {
     updateCVData,
     fetchCoverLetterData,
   } = useCV();
+  
+  const { pendingUpdates } = useNetworkSync();
 
   // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
@@ -77,11 +81,11 @@ const CVManager: React.FC = () => {
   });
 
   // Tab configuration
-  const tabs = [
+  const tabs = useMemo(() => [
     { id: 0, title: 'Mi CV', icon: 'create-outline' as const },
     { id: 1, title: 'Plantillas', icon: 'document-text-outline' as const },
     { id: 2, title: 'Carta', icon: 'mail-outline' as const },
-  ];
+  ], []);
 
   // Load data on component mount
   useEffect(() => {
@@ -98,8 +102,9 @@ const CVManager: React.FC = () => {
       await fetchCVData();
       await fetchCoverLetterData();
     } catch (refreshError) {
-      console.error('Error refreshing CV data:', refreshError);
-      Alert.alert('Error', 'Failed to refresh data. Please try again.');
+      console.error('Error al actualizar datos del CV:', refreshError);
+      // Only show user alert for refresh errors (manual action)
+      Alert.alert('Error', 'Error al actualizar los datos. Por favor, inténtalo de nuevo.');
     } finally {
       setTimeout(() => {
         setIsRefreshing(false);
@@ -119,8 +124,8 @@ const CVManager: React.FC = () => {
         }
       });
     } catch (updateError) {
-      console.error('Error updating personal info:', updateError);
-      Alert.alert('Error', 'Failed to update personal information');
+      console.error('Error al actualizar información personal:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -150,8 +155,8 @@ const CVManager: React.FC = () => {
         }
       });
     } catch (updateError) {
-      console.error('Error updating education:', updateError);
-      Alert.alert('Error', 'Failed to update education information');
+      console.error('Error al actualizar educación:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -161,8 +166,8 @@ const CVManager: React.FC = () => {
     try {
       await updateCVData({ skills });
     } catch (updateError) {
-      console.error('Error updating skills:', updateError);
-      Alert.alert('Error', 'Failed to update skills');
+      console.error('Error al actualizar habilidades:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -172,8 +177,8 @@ const CVManager: React.FC = () => {
     try {
       await updateCVData({ interests });
     } catch (updateError) {
-      console.error('Error updating interests:', updateError);
-      Alert.alert('Error', 'Failed to update interests');
+      console.error('Error al actualizar intereses:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -184,8 +189,8 @@ const CVManager: React.FC = () => {
     try {
       await updateCVData({ professionalSummary });
     } catch (updateError) {
-      console.error('Error updating professional summary:', updateError);
-      Alert.alert('Error', 'Failed to update professional summary');
+      console.error('Error al actualizar resumen profesional:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -196,8 +201,8 @@ const CVManager: React.FC = () => {
     try {
       await updateCVData({ languages });
     } catch (updateError) {
-      console.error('Error updating languages:', updateError);
-      Alert.alert('Error', 'Failed to update languages');
+      console.error('Error al actualizar idiomas:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -208,8 +213,8 @@ const CVManager: React.FC = () => {
     try {
       await updateCVData({ socialLinks });
     } catch (updateError) {
-      console.error('Error updating social links:', updateError);
-      Alert.alert('Error', 'Failed to update social links');
+      console.error('Error al actualizar enlaces sociales:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -220,8 +225,8 @@ const CVManager: React.FC = () => {
     try {
       await updateCVData({ workExperience });
     } catch (updateError) {
-      console.error('Error updating work experience:', updateError);
-      Alert.alert('Error', 'Failed to update work experience');
+      console.error('Error al actualizar experiencia laboral:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -232,8 +237,8 @@ const CVManager: React.FC = () => {
     try {
       await updateCVData({ projects });
     } catch (updateError) {
-      console.error('Error updating projects:', updateError);
-      Alert.alert('Error', 'Failed to update projects');
+      console.error('Error al actualizar proyectos:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -244,8 +249,8 @@ const CVManager: React.FC = () => {
     try {
       await updateCVData({ activities });
     } catch (updateError) {
-      console.error('Error updating activities:', updateError);
-      Alert.alert('Error', 'Failed to update activities');
+      console.error('Error al actualizar actividades:', updateError);
+      // Internal error - no user alert for sync errors
     }
   }, [cvData, updateCVData]);
 
@@ -266,7 +271,7 @@ const CVManager: React.FC = () => {
 
     const skillExists = cvData.skills?.some(skill => skill.name === state.newSkill.trim());
     if (skillExists) {
-      Alert.alert('Duplicate Skill', 'This skill already exists');
+      Alert.alert('Habilidad Duplicada', 'Esta habilidad ya existe');
       return;
     }
 
@@ -292,7 +297,7 @@ const CVManager: React.FC = () => {
 
     const interestExists = cvData.interests?.includes(state.newInterest.trim());
     if (interestExists) {
-      Alert.alert('Duplicate Interest', 'This interest already exists');
+      Alert.alert('Interés Duplicado', 'Este interés ya existe');
       return;
     }
 
@@ -311,9 +316,9 @@ const CVManager: React.FC = () => {
   // Header component
   const CVHeader = () => (
     <View style={styles.header}>
-      <ThemedText style={styles.headerTitle}>CV Manager</ThemedText>
+      <ThemedText style={styles.headerTitle}>Gestor de CV</ThemedText>
       <ThemedText style={styles.headerSubtitle}>
-        Create and manage your professional curriculum vitae
+        Crea y gestiona tu currículum vitae profesional
       </ThemedText>
     </View>
   );
@@ -459,6 +464,11 @@ const CVManager: React.FC = () => {
         {/* Network Status */}
         <NetworkStatus onSyncPress={fetchCVData} />
         
+        {/* Emergency Clear Button - Remove after fixing the issue */}
+        {pendingUpdates && pendingUpdates.length > 50 && (
+          <EmergencyClearButton />
+        )}
+        
         {/* Custom Tab Navigation */}
         <CVCustomTabBar
           activeTab={activeTab}
@@ -485,10 +495,10 @@ const CVManager: React.FC = () => {
             // Error state
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle-outline" size={64} color={tintColor} />
-              <ThemedText style={styles.errorTitle}>Failed to load CV data</ThemedText>
+              <ThemedText style={styles.errorTitle}>Error al cargar datos del CV</ThemedText>
               <ThemedText style={styles.errorMessage}>{error.message}</ThemedText>
               <Pressable style={[styles.retryButton, { backgroundColor: tintColor }]} onPress={handleRefresh}>
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text style={styles.retryButtonText}>Reintentar</Text>
               </Pressable>
             </View>
           ) : (

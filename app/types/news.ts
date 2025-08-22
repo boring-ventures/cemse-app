@@ -44,10 +44,12 @@ export interface NewsArticle {
   }>;
 }
 
-// Extended interface for detail view
+// Extended interface for detail view - already includes shareCount and readTime from NewsArticle
 export interface NewsDetail extends NewsArticle {
-  shareCount: number;
-  readTime: number; // estimated reading time in minutes
+  // NewsDetail interface extends NewsArticle which already contains:
+  // - shareCount: number
+  // - readTime: number
+  // No additional fields needed as per NEWS_MOBILE_SPEC.md
 }
 
 // Comment system interfaces (for future implementation)

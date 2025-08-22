@@ -2,11 +2,13 @@ import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { Message } from '@/app/types/entrepreneurship';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '../ThemedText';
 import { ThemedView } from '../ThemedView';
+import { useMessaging } from '@/app/hooks/useMessaging';
+import Shimmer from '../Shimmer';
 
 interface MessagingModalProps {
   visible: boolean;
@@ -24,63 +26,38 @@ export const MessagingModal: React.FC<MessagingModalProps> = ({
   messages = [],
 }) => {
   const [inputMessage, setInputMessage] = useState('');
-  const [mockMessages, setMockMessages] = useState<Message[]>([
-    {
-      id: '1',
-      senderId: recipientId,
-      receiverId: 'current_user',
-      senderName: recipientName,
-      content: `¡Hola! Gracias por conectar conmigo. Me interesa mucho conocer más sobre tu proyecto.`,
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      isRead: true,
-      type: 'text',
-    },
-    {
-      id: '2',
-      senderId: 'current_user',
-      receiverId: recipientId,
-      senderName: 'Tu',
-      content: `¡Hola ${recipientName}! Muchas gracias por tu interés. Me encantaría platicar contigo sobre las oportunidades de colaboración.`,
-      timestamp: new Date(Date.now() - 1800000).toISOString(),
-      isRead: true,
-      type: 'text',
-    },
-    {
-      id: '3',
-      senderId: recipientId,
-      receiverId: 'current_user',
-      senderName: recipientName,
-      content: `Perfecto. ¿Podrías contarme un poco más sobre los desafíos técnicos que están enfrentando?`,
-      timestamp: new Date(Date.now() - 900000).toISOString(),
-      isRead: true,
-      type: 'text',
-    },
-  ]);
+  
+  // API integration using useMessaging hook
+  const { 
+    currentMessages, 
+    loading, 
+    error, 
+    fetchMessages, 
+    sendMessage 
+  } = useMessaging();
+  
+  // Load messages when modal opens
+  useEffect(() => {
+    if (visible && recipientId) {
+      fetchMessages(recipientId);
+    }
+  }, [visible, recipientId, fetchMessages]);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardBackground = useThemeColor({}, 'card');
   const textColor = useThemeColor({}, 'text');
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const borderColor = useThemeColor({}, 'border');
-  const iconColor = useThemeColor({}, 'tint');
+  const tintColor = useThemeColor({}, 'tint');
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputMessage.trim()) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        senderId: 'current_user',
-        receiverId: recipientId,
-        senderName: 'Tu',
-        content: inputMessage,
-        timestamp: new Date().toISOString(),
-        isRead: false,
-        type: 'text',
-      };
-
-      setMockMessages(prev => [...prev, newMessage]);
-      setInputMessage('');
+      const success = await sendMessage(recipientId, inputMessage.trim());
+      if (success) {
+        setInputMessage('');
+      }
     }
   };
 
@@ -103,7 +80,7 @@ export const MessagingModal: React.FC<MessagingModalProps> = ({
         <View style={[
           styles.messageBubble,
           isCurrentUser 
-            ? { backgroundColor: iconColor }
+            ? { backgroundColor: tintColor }
             : { backgroundColor: cardBackground, borderColor: borderColor + '40' }
         ]}>
           <ThemedText style={[
@@ -152,14 +129,44 @@ export const MessagingModal: React.FC<MessagingModalProps> = ({
           </View>
 
           {/* Messages */}
-          <FlatList
-            data={mockMessages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            style={styles.messagesList}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-          />
+          {loading ? (
+            <View style={styles.messagesContent}>
+              {[1, 2, 3].map((_, index) => (
+                <Shimmer key={index}>
+                  <View style={[
+                    styles.skeletonMessage,
+                    { 
+                      backgroundColor: `${tintColor}20`,
+                      alignSelf: index % 2 === 0 ? 'flex-start' : 'flex-end',
+                      width: `${60 + Math.random() * 30}%`
+                    }
+                  ]} />
+                </Shimmer>
+              ))}
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
+              <ThemedText style={styles.errorTitle}>Error al cargar mensajes</ThemedText>
+              <ThemedText style={styles.errorMessage}>{error}</ThemedText>
+              <TouchableOpacity
+                style={[styles.retryButton, { backgroundColor: tintColor }]}
+                onPress={() => fetchMessages(recipientId)}
+              >
+                <ThemedText style={styles.retryButtonText}>Reintentar</ThemedText>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <FlatList
+              data={currentMessages}
+              renderItem={renderMessage}
+              keyExtractor={(item) => item.id}
+              style={styles.messagesList}
+              contentContainerStyle={styles.messagesContent}
+              showsVerticalScrollIndicator={false}
+              inverted
+            />
+          )}
 
           {/* Input */}
           <KeyboardAvoidingView
@@ -168,7 +175,7 @@ export const MessagingModal: React.FC<MessagingModalProps> = ({
           >
             <View style={styles.inputRow}>
               <TouchableOpacity style={styles.attachButton}>
-                <Ionicons name="add-circle-outline" size={24} color={iconColor} />
+                <Ionicons name="add-circle-outline" size={24} color={tintColor} />
               </TouchableOpacity>
               
               <TextInput
@@ -191,7 +198,7 @@ export const MessagingModal: React.FC<MessagingModalProps> = ({
               <TouchableOpacity 
                 style={[
                   styles.sendButton,
-                  { backgroundColor: inputMessage.trim() ? iconColor : secondaryTextColor + '40' }
+                  { backgroundColor: inputMessage.trim() ? tintColor : secondaryTextColor + '40' }
                 ]}
                 onPress={handleSendMessage}
                 disabled={!inputMessage.trim()}
@@ -298,5 +305,39 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  skeletonMessage: {
+    height: 40,
+    borderRadius: 18,
+    marginBottom: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 }); 

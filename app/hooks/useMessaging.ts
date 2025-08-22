@@ -4,6 +4,7 @@ import { useAuth } from '@/app/components/AuthContext';
 import {
   Conversation,
   Message,
+  ExtendedMessage,
   MessagingStats,
 } from '@/app/types/entrepreneurship';
 
@@ -109,11 +110,30 @@ export function useMessaging(): UseMessagingReturn {
         // Add the new message to current messages
         setCurrentMessages(prev => [response.data!, ...prev]);
         
-        // Update conversations list
+        // Update conversations list - convert Message to ExtendedMessage
+        const extendedMessage: ExtendedMessage = {
+          ...response.data!,
+          conversationId: receiverId, // Use receiverId as conversation identifier
+          messageType: (response.data!.type === 'text' ? 'TEXT' : 
+                       response.data!.type === 'file' ? 'FILE' : 
+                       response.data!.type === 'system' ? 'SYSTEM' : 'TEXT') as 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM',
+          status: 'SENT' as 'SENT' | 'DELIVERED' | 'READ' | 'FAILED',
+          sender: {
+            firstName: 'Current',
+            lastName: 'User',
+            avatarUrl: undefined,
+          },
+          receiver: {
+            firstName: 'Unknown',
+            lastName: 'User',
+            avatarUrl: undefined,
+          },
+        };
+        
         setConversations(prev => 
           prev.map(conv => 
             conv.otherParticipantId === receiverId
-              ? { ...conv, lastMessage: response.data!, updatedAt: new Date().toISOString() }
+              ? { ...conv, lastMessage: extendedMessage, updatedAt: new Date().toISOString() }
               : conv
           )
         );

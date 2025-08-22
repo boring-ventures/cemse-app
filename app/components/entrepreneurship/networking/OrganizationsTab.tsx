@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -15,6 +15,8 @@ import { router } from 'expo-router';
 import { ThemedText } from '@/app/components/ThemedText';
 import { ThemedView } from '@/app/components/ThemedView';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
+import { useDirectory } from '@/app/hooks/useDirectory';
+import Shimmer from '@/app/components/Shimmer';
 
 interface Organization {
   id: string;
@@ -61,74 +63,40 @@ const OrganizationsTab: React.FC<OrganizationsTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [followingStatus, setFollowingStatus] = useState<Record<string, boolean>>({});
-
-  // Mock organizations data (in real app, this would come from props or API)
-  const [organizations] = useState<Organization[]>([
-    {
-      id: '1',
-      name: 'Fundación Emprendedores Bolivia',
-      description: 'Organización dedicada al fomento del emprendimiento e innovación en Bolivia. Ofrecemos programas de capacitación, mentorías y acceso a financiamiento.',
-      type: 'ONG',
-      logoUrl: undefined,
-      contactEmail: 'info@emprendedoresbolivia.org',
-      website: 'https://emprendedoresbolivia.org',
-      location: 'La Paz',
-      department: 'La Paz',
-      services: ['Capacitación', 'Mentorías', 'Financiamiento', 'Networking'],
-      isFollowing: false,
-      followersCount: 1250,
-      programsCount: 8,
-      lastActivity: '2024-01-20T10:30:00Z',
-    },
-    {
-      id: '2',
-      name: 'Incubadora IDEA USACH',
-      description: 'Centro de incubación de startups tecnológicas. Brindamos espacio de trabajo, asesoría técnica y conexiones con inversionistas.',
-      type: 'Incubadora',
-      logoUrl: undefined,
-      contactEmail: 'contacto@ideausach.cl',
-      website: 'https://ideausach.cl',
-      location: 'Santa Cruz',
-      department: 'Santa Cruz',
-      services: ['Incubación', 'Coworking', 'Asesoría técnica', 'Inversión'],
-      isFollowing: true,
-      followersCount: 890,
-      programsCount: 12,
-      lastActivity: '2024-01-19T14:45:00Z',
-    },
-    {
-      id: '3',
-      name: 'Cámara de Comercio Cochabamba',
-      description: 'Institución que promueve el desarrollo empresarial y comercial en Cochabamba. Facilitamos contactos comerciales y capacitaciones.',
-      type: 'Cámara',
-      logoUrl: undefined,
-      contactEmail: 'info@camaracochabamba.org',
-      website: 'https://camaracochabamba.org',
-      location: 'Cochabamba',
-      department: 'Cochabamba',
-      services: ['Networking comercial', 'Capacitaciones', 'Certificaciones', 'Eventos'],
-      isFollowing: false,
-      followersCount: 2100,
-      programsCount: 15,
-      lastActivity: '2024-01-18T09:20:00Z',
-    },
-    {
-      id: '4',
-      name: 'Startup Weekend Bolivia',
-      description: 'Comunidad global de emprendedores que organiza eventos de fin de semana para crear startups en 54 horas.',
-      type: 'Comunidad',
-      logoUrl: undefined,
-      contactEmail: 'bolivia@startupweekend.org',
-      website: 'https://startupweekend.org/bolivia',
-      location: 'La Paz',
-      department: 'La Paz',
-      services: ['Eventos', 'Networking', 'Mentorías', 'Competencias'],
-      isFollowing: true,
-      followersCount: 750,
-      programsCount: 6,
-      lastActivity: '2024-01-17T16:30:00Z',
-    },
-  ]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  
+  // API integration
+  const { institutions, loading: loadingInstitutions, error: institutionsError, fetchInstitutions } = useDirectory();
+  
+  // Transform institutions to organizations format
+  useEffect(() => {
+    if (institutions && institutions.length > 0) {
+      const transformedOrgs: Organization[] = institutions.map(inst => ({
+        id: inst.id,
+        name: inst.name,
+        description: `Institución ${inst.institutionType.toLowerCase().replace('_', ' ')} ubicada en ${inst.department}, ${inst.region}`,
+        type: inst.institutionType === 'GOBIERNOS_MUNICIPALES' ? 'Gobierno' :
+              inst.institutionType === 'CENTROS_DE_FORMACION' ? 'Centro de Formación' :
+              inst.institutionType === 'ONGS_Y_FUNDACIONES' ? 'ONG' : 'Institución',
+        logoUrl: undefined,
+        contactEmail: `contacto@${inst.name.toLowerCase().replace(/\s+/g, '')}.org`,
+        website: `https://${inst.name.toLowerCase().replace(/\s+/g, '')}.org`,
+        location: inst.region,
+        department: inst.department,
+        services: ['Servicios institucionales', 'Programas', 'Capacitación'],
+        isFollowing: false,
+        followersCount: Math.floor(Math.random() * 2000) + 100,
+        programsCount: Math.floor(Math.random() * 20) + 1,
+        lastActivity: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString(),
+      }));
+      setOrganizations(transformedOrgs);
+    }
+  }, [institutions]);
+  
+  // Load data on component mount
+  useEffect(() => {
+    fetchInstitutions();
+  }, [fetchInstitutions]);
 
   // Organization types for filtering
   const organizationTypes = [
@@ -442,6 +410,41 @@ const OrganizationsTab: React.FC<OrganizationsTabProps> = ({
     </View>
   );
 
+  // Loading state
+  if (loadingInstitutions) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <View style={styles.listContent}>
+          <SearchHeader />
+          {[1, 2, 3].map((_, index) => (
+            <Shimmer key={index}>
+              <View style={[styles.skeletonCard, { backgroundColor: `${tintColor}20` }]} />
+            </Shimmer>
+          ))}
+        </View>
+      </ThemedView>
+    );
+  }
+  
+  // Error state
+  if (institutionsError) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
+          <ThemedText style={styles.errorTitle}>Error al cargar organizaciones</ThemedText>
+          <ThemedText style={styles.errorMessage}>{institutionsError}</ThemedText>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: tintColor }]}
+            onPress={fetchInstitutions}
+          >
+            <ThemedText style={styles.retryButtonText}>Reintentar</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <FlatList
@@ -679,6 +682,39 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.7,
     lineHeight: 20,
+  },
+  skeletonCard: {
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

@@ -449,13 +449,17 @@ export const MobileNewsDetail: React.FC<MobileNewsDetailProps> = ({
       >
         {/* Featured Image */}
         <View style={styles.imageContainer}>
-          <Image
-            source={{
-              uri: news.imageUrl || 'https://via.placeholder.com/400x200/cccccc/666666?text=No+Image'
-            }}
-            style={styles.featuredImage}
-            resizeMode="cover"
-          />
+          {news.imageUrl ? (
+            <Image
+              source={{ uri: news.imageUrl }}
+              style={styles.featuredImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.featuredImage, styles.noImageContainer]}>
+              <Ionicons name="image-outline" size={64} color="#9CA3AF" />
+            </View>
+          )}
           
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}
@@ -770,6 +774,13 @@ const styles = StyleSheet.create({
     height: 200,
     backgroundColor: '#e5e7eb',
     borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noImageContainer: {
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tagsContainer: {
     marginBottom: 24,

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   Alert,
-  FlatList,
+  ScrollView,
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -65,12 +65,12 @@ function DynamicList<T>({
   // Handle delete with confirmation
   const handleDelete = (index: number) => {
     Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this item?',
+      'Confirmar Eliminación',
+      '¿Estás seguro de que quieres eliminar este elemento?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Eliminar',
           style: 'destructive',
           onPress: () => {
             // Animate scale down then delete
@@ -149,15 +149,24 @@ function DynamicList<T>({
     <View style={styles.container}>
       {title && <ThemedText style={styles.title}>{title}</ThemedText>}
       
-      {/* List */}
-      <FlatList
-        data={data}
-        renderItem={renderListItem}
-        keyExtractor={(_, index) => index.toString()}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={EmptyState}
-        contentContainerStyle={data.length === 0 ? styles.emptyContainer : undefined}
-      />
+      {/* List - Using ScrollView to avoid VirtualizedList nesting issues */}
+      <View style={styles.listContainer}>
+        {data.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <ScrollView 
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+          >
+            {data.map((item, index) => (
+              <View key={index}>
+                {renderListItem({ item, index })}
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
 
       {/* Add Button */}
       <Pressable
@@ -182,7 +191,7 @@ function DynamicList<T>({
               <Ionicons name="close" size={24} color={textColor} />
             </Pressable>
             <ThemedText style={styles.modalTitle}>
-              {editingIndex !== null ? 'Edit Item' : 'Add New Item'}
+              {editingIndex !== null ? 'Editar Elemento' : 'Agregar Nuevo Elemento'}
             </ThemedText>
             <View style={styles.modalCloseButton} />
           </View>
@@ -199,6 +208,13 @@ function DynamicList<T>({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  listContainer: {
+    flex: 1,
+    maxHeight: 300, // Prevent excessive height that could cause memory issues
+  },
+  scrollView: {
     flex: 1,
   },
   title: {
@@ -305,4 +321,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DynamicList;
+// Memoize the component to prevent unnecessary re-renders
+export default memo(DynamicList) as typeof DynamicList;

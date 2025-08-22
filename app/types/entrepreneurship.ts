@@ -43,19 +43,36 @@ export interface Resource {
   title: string;
   description: string;
   category: string;
+  subcategory?: string;
   duration: string;
   rating: number;
   ratingCount: number;
   downloads: number;
   fileInfo: string;
   fileSize: string;
+  format: 'PDF' | 'DOCX' | 'XLSX' | 'MP4' | 'MP3' | 'ZIP' | 'OTHER';
   publishDate: string;
+  lastUpdated: string;
   tags: string[];
   thumbnailUrl?: string;
   previewUrl?: string;
   downloadUrl?: string;
+  externalUrl?: string;
   isFavorite: boolean;
+  isBookmarked: boolean;
   author?: string;
+  authorBio?: string;
+  authorAvatar?: string;
+  language: string;
+  difficulty: number; // 1-5 scale
+  estimatedReadTime?: number; // in minutes
+  prerequisites?: string[];
+  learningObjectives?: string[];
+  userRating?: number; // Current user's rating
+  downloadedAt?: string; // When current user downloaded
+  viewCount: number;
+  likeCount: number;
+  isLiked: boolean;
 }
 
 export interface ResourceFilter {
@@ -220,6 +237,16 @@ export interface TimeSlot {
   duration: number; // in minutes
 }
 
+export interface MessageAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  fileUrl: string;
+  thumbnailUrl?: string;
+  uploadedAt: string;
+}
+
 export interface Message {
   id: string;
   senderId: string;
@@ -233,6 +260,28 @@ export interface Message {
     fileName?: string;
     fileSize?: string;
     connectionStatus?: 'pending' | 'accepted' | 'declined';
+  };
+}
+
+export interface ExtendedMessage extends Message {
+  conversationId: string;
+  messageType: 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM';
+  attachments?: MessageAttachment[];
+  replyTo?: string; // ID of message being replied to
+  replyToMessage?: Message; // Full reply message object
+  edited?: boolean;
+  editedAt?: string;
+  status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
+  readAt?: string;
+  sender: {
+    firstName: string;
+    lastName: string;
+    avatarUrl?: string;
+  };
+  receiver: {
+    firstName: string;
+    lastName: string;
+    avatarUrl?: string;
   };
 }
 
@@ -460,10 +509,18 @@ export interface Conversation {
     lastName: string;
     email: string;
     avatarUrl?: string;
+    currentInstitution?: string;
+    isOnline?: boolean;
+    lastSeen?: string;
   };
-  lastMessage?: Message;
+  lastMessage?: ExtendedMessage;
   unreadCount: number;
+  totalMessages: number;
+  createdAt: string;
   updatedAt: string;
+  isArchived?: boolean;
+  isPinned?: boolean;
+  isMuted?: boolean;
 }
 
 export interface MessagingStats {
@@ -471,6 +528,15 @@ export interface MessagingStats {
   unreadMessages: number;
   totalMessagesSent: number;
   totalMessagesReceived: number;
+  activeConversations: number;
+  totalAttachmentsSent: number;
+  totalAttachmentsReceived: number;
+  averageResponseTime?: number; // in minutes
+  mostActiveConversation?: {
+    contactId: string;
+    contactName: string;
+    messageCount: number;
+  };
 }
 
 // Directory Types

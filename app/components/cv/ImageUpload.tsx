@@ -135,14 +135,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       const match = /\.(\w+)$/.exec(filename);
       const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-      formData.append('avatar', {
+      formData.append('image', {
         uri: selectedImage,
         name: filename,
         type,
       } as any);
 
       // Upload using existing API service
-      const response = await apiService.uploadAvatar(tokens.token, formData);
+      const response = await apiService.uploadProfileImage(tokens.token, formData);
 
       if (response.success && response.data?.avatarUrl) {
         await onImageSelected(response.data.avatarUrl);

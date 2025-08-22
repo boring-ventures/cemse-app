@@ -6,6 +6,8 @@ import {
   ContactStats,
   Conversation,
   Message,
+  ExtendedMessage,
+  MessageAttachment,
   MessagingStats,
   Institution,
   DirectoryProfile,
@@ -321,6 +323,58 @@ class EntrepreneurshipApiService {
     return this.authenticatedRequest<MessagingStats>('/messages/stats', token);
   }
 
+  /**
+   * Get unread messages count
+   */
+  async getUnreadCount(token: string): Promise<ApiResponse<{ count: number }>> {
+    return this.authenticatedRequest<{ count: number }>('/messages/unread-count', token);
+  }
+
+  /**
+   * Mark all messages as read
+   */
+  async markAllMessagesAsRead(token: string): Promise<ApiResponse<void>> {
+    return this.authenticatedRequest<void>('/messages/mark-all-read', token, {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * Search through messages
+   */
+  async searchMessages(
+    token: string,
+    query: string,
+    options?: {
+      contactId?: string;
+      page?: number;
+      limit?: number;
+    }
+  ): Promise<ApiResponse<{
+    messages: Message[];
+    total: number;
+    page: number;
+    limit: number;
+  }>> {
+    const params = new URLSearchParams({ query });
+    
+    if (options) {
+      Object.entries(options).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params.append(key, value.toString());
+        }
+      });
+    }
+
+    const endpoint = `/messages/search?${params.toString()}`;
+    return this.authenticatedRequest<{
+      messages: Message[];
+      total: number;
+      page: number;
+      limit: number;
+    }>(endpoint, token);
+  }
+
   // Directory Operations
 
   /**
@@ -366,6 +420,38 @@ class EntrepreneurshipApiService {
    */
   async getPost(token: string, postId: string): Promise<ApiResponse<Post>> {
     return this.authenticatedRequest<Post>(`/directory/posts/${postId}`, token);
+  }
+
+  /**
+   * Follow an institution
+   */
+  async followInstitution(token: string, institutionId: string): Promise<ApiResponse<void>> {
+    return this.authenticatedRequest<void>(`/institutions/${institutionId}/follow`, token, {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * Unfollow an institution
+   */
+  async unfollowInstitution(token: string, institutionId: string): Promise<ApiResponse<void>> {
+    return this.authenticatedRequest<void>(`/institutions/${institutionId}/follow`, token, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Get user's followed institutions
+   */
+  async getFollowedInstitutions(token: string): Promise<ApiResponse<Institution[]>> {
+    return this.authenticatedRequest<Institution[]>('/institutions/followed', token);
+  }
+
+  /**
+   * Check if user follows an institution
+   */
+  async checkFollowStatus(token: string, institutionId: string): Promise<ApiResponse<{ isFollowing: boolean }>> {
+    return this.authenticatedRequest<{ isFollowing: boolean }>(`/institutions/${institutionId}/follow-status`, token);
   }
 
   // Resources Operations
@@ -468,6 +554,59 @@ class EntrepreneurshipApiService {
     return this.authenticatedRequest<void>(`/resources/${resourceId}/favorite`, token, {
       method: 'DELETE',
     });
+  }
+
+  /**
+   * Get available resource categories
+   */
+  async getResourceCategories(token: string): Promise<ApiResponse<string[]>> {
+    return this.authenticatedRequest<string[]>('/resources/categories', token);
+  }
+
+  /**
+   * Get user's download history
+   */
+  async getMyDownloads(
+    token: string,
+    options?: {
+      page?: number;
+      limit?: number;
+      sortBy?: 'downloadDate' | 'title' | 'type';
+      sortOrder?: 'asc' | 'desc';
+    }
+  ): Promise<ApiResponse<{
+    downloads: Array<{
+      id: string;
+      resource: Resource;
+      downloadedAt: string;
+      downloadCount: number;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+  }>> {
+    const params = new URLSearchParams();
+    
+    if (options) {
+      Object.entries(options).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params.append(key, value.toString());
+        }
+      });
+    }
+
+    const endpoint = `/resources/my-downloads${params.toString() ? `?${params.toString()}` : ''}`;
+    return this.authenticatedRequest<{
+      downloads: Array<{
+        id: string;
+        resource: Resource;
+        downloadedAt: string;
+        downloadCount: number;
+      }>;
+      total: number;
+      page: number;
+      limit: number;
+    }>(endpoint, token);
   }
 
   // File Upload Operations

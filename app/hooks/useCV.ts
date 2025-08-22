@@ -48,7 +48,7 @@ export function useCV(): CVHookReturn {
         setCoverLetterData(JSON.parse(cachedCoverLetter));
       }
     } catch (error) {
-      console.error('Error loading cached CV data:', error);
+      console.error('Error al cargar datos del CV en caché:', error);
     }
   };
 
@@ -59,7 +59,7 @@ export function useCV(): CVHookReturn {
     try {
       await AsyncStorage.setItem(CV_STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
-      console.error('Error caching CV data:', error);
+      console.error('Error al guardar datos del CV en caché:', error);
     }
   };
 
@@ -70,21 +70,39 @@ export function useCV(): CVHookReturn {
     try {
       await AsyncStorage.setItem(COVER_LETTER_STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
-      console.error('Error caching cover letter data:', error);
+      console.error('Error al guardar datos de carta de presentación en caché:', error);
     }
   };
 
   /**
-   * Queue offline action for later sync
+   * Queue offline action for later sync (only if not already queued by network sync)
    */
   const queueOfflineAction = async (action: OfflineAction) => {
     try {
+      // Don't queue if this is already being handled by useNetworkSync
+      const networkQueue = await AsyncStorage.getItem('cv_offline_queue');
+      if (networkQueue) {
+        const queue = JSON.parse(networkQueue);
+        // If the network sync queue already has items, don't add to this legacy queue
+        if (queue.length > 0) {
+          console.log('Skipping queue to legacy storage - handled by network sync');
+          return;
+        }
+      }
+
       const existingQueue = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
       const queue = existingQueue ? JSON.parse(existingQueue) : [];
+      
+      // Limit queue size to prevent memory issues
+      if (queue.length >= 10) {
+        console.log('CV queue full, removing oldest items');
+        queue.splice(0, queue.length - 9); // Keep only 9 items, add 1 new = 10 total
+      }
+      
       queue.push(action);
       await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
     } catch (error) {
-      console.error('Error queueing offline action:', error);
+      console.error('Error al agregar acción a cola offline:', error);
     }
   };
 
@@ -169,7 +187,7 @@ export function useCV(): CVHookReturn {
         }
       }
     } catch (apiError) {
-      console.error('Error fetching CV data:', apiError);
+      console.error('Error al obtener datos del CV:', apiError);
       setError(apiError as Error);
       
       // Fallback to cached data or mock data
@@ -183,7 +201,7 @@ export function useCV(): CVHookReturn {
           await cacheCVData(mockData);
         }
       } catch (cacheError) {
-        console.error('Error loading fallback data:', cacheError);
+        console.error('Error al cargar datos de respaldo:', cacheError);
         const mockData = getMockCVData();
         setCvData(mockData);
       }
@@ -195,10 +213,18 @@ export function useCV(): CVHookReturn {
   /**
    * Update CV data with optimistic updates and offline queueing
    * Implements exact pattern from web cv-manager.tsx
+   * Prevents infinite loops by not re-queueing network sync updates
    */
   const updateCVData = useCallback(async (data: Partial<CVData>): Promise<any> => {
     if (!tokens?.token) {
       throw new Error('No authentication token');
+    }
+
+    // Check if this is a network sync update to prevent re-queueing
+    const isNetworkSync = (data as any)._isNetworkSync;
+    const cleanData = isNetworkSync ? { ...data } : data;
+    if (isNetworkSync) {
+      delete (cleanData as any)._isNetworkSync;
     }
 
     try {
@@ -207,7 +233,7 @@ export function useCV(): CVHookReturn {
 
       // Optimistic update
       const currentData = cvData || getMockCVData();
-      const updatedData = { ...currentData, ...data };
+      const updatedData = { ...currentData, ...cleanData };
       setCvData(updatedData);
       await cacheCVData(updatedData);
 
@@ -218,7 +244,7 @@ export function useCV(): CVHookReturn {
           'Authorization': `Bearer ${tokens.token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(cleanData),
       });
 
       if (response.ok) {
@@ -228,28 +254,37 @@ export function useCV(): CVHookReturn {
         await cacheCVData(finalData);
         return serverData;
       } else {
-        // Queue for offline sync
-        const offlineAction: OfflineAction = {
-          type: 'UPDATE_CV',
-          data,
-          timestamp: Date.now(),
-          id: `update_${Date.now()}`
-        };
-        await queueOfflineAction(offlineAction);
+        // Only queue for offline sync if this is NOT already a network sync attempt
+        if (!isNetworkSync) {
+          const offlineAction: OfflineAction = {
+            type: 'UPDATE_CV',
+            data: cleanData,
+            timestamp: Date.now(),
+            id: `update_${Date.now()}`,
+            attempts: 0,
+          };
+          await queueOfflineAction(offlineAction);
+        }
         
-        throw new Error('Failed to update CV data - queued for offline sync');
+        throw new Error(isNetworkSync 
+          ? 'Falló la sincronización de red - no se reintentará automáticamente'
+          : 'Error al actualizar datos del CV - agregado a cola de sincronización'
+        );
       }
     } catch (updateError) {
-      console.error('Error updating CV data:', updateError);
+      console.error('Error al actualizar datos del CV:', updateError);
       
-      // Queue for offline sync
-      const offlineAction: OfflineAction = {
-        type: 'UPDATE_CV',
-        data,
-        timestamp: Date.now(),
-        id: `update_${Date.now()}`
-      };
-      await queueOfflineAction(offlineAction);
+      // Only queue for offline sync if this is NOT already a network sync attempt
+      if (!isNetworkSync) {
+        const offlineAction: OfflineAction = {
+          type: 'UPDATE_CV',
+          data: cleanData,
+          timestamp: Date.now(),
+          id: `update_${Date.now()}`,
+          attempts: 0,
+        };
+        await queueOfflineAction(offlineAction);
+      }
       
       setError(updateError as Error);
       throw updateError;
@@ -291,7 +326,7 @@ export function useCV(): CVHookReturn {
         }
       }
     } catch (apiError) {
-      console.error('Error fetching cover letter data:', apiError);
+      console.error('Error al obtener datos de carta de presentación:', apiError);
       setError(apiError as Error);
       
       // Fallback to cached data
@@ -301,7 +336,7 @@ export function useCV(): CVHookReturn {
           setCoverLetterData(JSON.parse(cachedData));
         }
       } catch (cacheError) {
-        console.error('Error loading cached cover letter data:', cacheError);
+        console.error('Error al cargar datos de carta de presentación en caché:', cacheError);
       }
     } finally {
       setLoading(false);
@@ -369,7 +404,7 @@ export function useCV(): CVHookReturn {
         throw new Error('Failed to save cover letter - queued for offline sync');
       }
     } catch (saveError) {
-      console.error('Error saving cover letter data:', saveError);
+      console.error('Error al guardar datos de carta de presentación:', saveError);
       setError(saveError as Error);
       throw saveError;
     } finally {
@@ -404,7 +439,7 @@ export function useCV(): CVHookReturn {
         throw new Error('Failed to generate CV for application');
       }
     } catch (generateError) {
-      console.error('Error generating CV for application:', generateError);
+      console.error('Error al generar CV para aplicación:', generateError);
       setError(generateError as Error);
       throw generateError;
     } finally {

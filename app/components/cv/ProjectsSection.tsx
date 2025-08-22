@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import {
   View,
   StyleSheet,
@@ -542,4 +542,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProjectsSection;
+export default memo(ProjectsSection);

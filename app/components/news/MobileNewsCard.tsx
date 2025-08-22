@@ -132,13 +132,17 @@ export const MobileNewsCard: React.FC<MobileNewsCardProps> = ({
     >
       {/* Image Container */}
       <View style={[styles.imageContainer, compact && styles.compactImageContainer]}>
-        <Image
-          source={{ 
-            uri: news.imageUrl || 'https://via.placeholder.com/400x200/cccccc/666666?text=No+Image'
-          }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+        {news.imageUrl ? (
+          <Image
+            source={{ uri: news.imageUrl }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.image, styles.noImageContainer]}>
+            <Ionicons name="image-outline" size={48} color="#9CA3AF" />
+          </View>
+        )}
         
         {/* Image Overlay Gradient */}
         <LinearGradient
@@ -452,6 +456,11 @@ const styles = StyleSheet.create({
   readTimeText: {
     fontSize: 11,
     marginLeft: 4,
+  },
+  noImageContainer: {
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

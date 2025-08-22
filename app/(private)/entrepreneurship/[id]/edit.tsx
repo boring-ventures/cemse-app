@@ -9,6 +9,8 @@ import {
   Platform,
   TextInput,
   TextInputProps,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,6 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 
 import { ThemedText } from '../../../components/ThemedText';
 import { ThemedView } from '../../../components/ThemedView';
@@ -97,27 +101,83 @@ const inputStyles = StyleSheet.create({
   },
 });
 
+// Custom URL validation for social media
+const validateSocialMediaUrl = (url: string, platform: string): boolean => {
+  if (!url) return true; // Empty URLs are allowed
+  
+  const patterns = {
+    facebook: /^https?:\/\/(www\.)?(facebook|fb)\.com\/[a-zA-Z0-9\.\-_]+\/?$/,
+    instagram: /^https?:\/\/(www\.)?instagram\.com\/[a-zA-Z0-9\.\-_]+\/?$/,
+    linkedin: /^https?:\/\/(www\.)?linkedin\.com\/(in|company)\/[a-zA-Z0-9\-_]+\/?$/,
+  };
+  
+  return patterns[platform as keyof typeof patterns]?.test(url) || false;
+};
+
 const validationSchema = Yup.object().shape({
   name: Yup.string()
     .min(2, 'El nombre debe tener al menos 2 caracteres')
     .max(100, 'El nombre no puede exceder 100 caracteres')
+    .matches(/^[a-zA-Z0-9\s\-_.áéíóúñÁÉÍÓÚÑ]+$/, 'El nombre contiene caracteres no válidos')
     .required('El nombre es requerido'),
   description: Yup.string()
-    .min(10, 'La descripción debe tener al menos 10 caracteres')
-    .max(500, 'La descripción no puede exceder 500 caracteres')
+    .min(20, 'La descripción debe tener al menos 20 caracteres')
+    .max(1000, 'La descripción no puede exceder 1000 caracteres')
     .required('La descripción es requerida'),
   category: Yup.string().required('La categoría es requerida'),
   businessStage: Yup.string().required('La etapa del negocio es requerida'),
-  municipality: Yup.string().required('El municipio es requerido'),
+  municipality: Yup.string()
+    .min(2, 'El municipio debe tener al menos 2 caracteres')
+    .matches(/^[a-zA-Z\s\-áéíóúñÁÉÍÓÚÑ]+$/, 'El municipio contiene caracteres no válidos')
+    .required('El municipio es requerido'),
   department: Yup.string().required('El departamento es requerido'),
-  email: Yup.string().email('Email inválido').required('El email es requerido'),
-  phone: Yup.string().min(7, 'El teléfono debe tener al menos 7 dígitos'),
-  website: Yup.string().url('URL inválida'),
+  email: Yup.string()
+    .email('Email inválido')
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Formato de email inválido')
+    .required('El email es requerido'),
+  phone: Yup.string()
+    .matches(/^[\+]?[0-9\s\-()]{7,15}$/, 'Formato de teléfono inválido')
+    .min(7, 'El teléfono debe tener al menos 7 dígitos'),
+  website: Yup.string()
+    .url('URL inválida')
+    .matches(/^https?:\/\/.+\..+/, 'La URL debe incluir http:// o https://'),
   socialMedia: Yup.object().shape({
-    facebook: Yup.string().url('URL de Facebook inválida'),
-    instagram: Yup.string().url('URL de Instagram inválida'),
-    linkedin: Yup.string().url('URL de LinkedIn inválida'),
+    facebook: Yup.string().test(
+      'facebook-url',
+      'URL de Facebook inválida. Debe ser como: https://facebook.com/tuempresa',
+      (value) => validateSocialMediaUrl(value || '', 'facebook')
+    ),
+    instagram: Yup.string().test(
+      'instagram-url',
+      'URL de Instagram inválida. Debe ser como: https://instagram.com/tuempresa',
+      (value) => validateSocialMediaUrl(value || '', 'instagram')
+    ),
+    linkedin: Yup.string().test(
+      'linkedin-url',
+      'URL de LinkedIn inválida. Debe ser como: https://linkedin.com/company/tuempresa',
+      (value) => validateSocialMediaUrl(value || '', 'linkedin')
+    ),
   }),
+  founded: Yup.string()
+    .matches(/^[0-9]{4}$/, 'Debe ser un año válido de 4 dígitos')
+    .test('valid-year', 'El año debe estar entre 1900 y el año actual', (value) => {
+      if (!value) return true;
+      const year = parseInt(value);
+      const currentYear = new Date().getFullYear();
+      return year >= 1900 && year <= currentYear;
+    }),
+  employees: Yup.string()
+    .matches(/^[0-9]+$/, 'Debe ser un número entero')
+    .test('positive-number', 'Debe ser un número mayor a 0', (value) => {
+      if (!value) return true;
+      return parseInt(value) > 0;
+    }),
+  annualRevenue: Yup.string()
+    .matches(/^[0-9]+$/, 'Debe ser un número entero')
+    .test('positive-number', 'Debe ser un número mayor a 0', (value) => {
+      if (!value) return true;
+      return parseInt(value) > 0;
+    }),
 });
 
 const BUSINESS_STAGES = [
@@ -151,6 +211,13 @@ const DEPARTMENTS = [
   'Pando',
 ];
 
+interface ImageUploadState {
+  uploading: boolean;
+  progress: number;
+  uri?: string;
+  error?: string;
+}
+
 export default function EditEntrepreneurshipScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -158,6 +225,9 @@ export default function EditEntrepreneurshipScreen() {
   const { entrepreneurship, loading, error, fetchEntrepreneurship, updateEntrepreneurship } = useEntrepreneurship(id);
   
   const [isSaving, setIsSaving] = useState(false);
+  const [logoUpload, setLogoUpload] = useState<ImageUploadState>({ uploading: false, progress: 0 });
+  const [imagesUpload, setImagesUpload] = useState<ImageUploadState>({ uploading: false, progress: 0 });
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -183,12 +253,91 @@ export default function EditEntrepreneurshipScreen() {
     router.back();
   };
 
+  const validateFormData = (values: EditFormData): Record<string, string> => {
+    const errors: Record<string, string> = {};
+    
+    // Real-time custom validations
+    if (values.name && values.name.length < 2) {
+      errors.name = 'El nombre es demasiado corto';
+    }
+    
+    if (values.email && !values.email.includes('@')) {
+      errors.email = 'Email debe contener @';
+    }
+    
+    if (values.phone && values.phone.length > 0 && values.phone.length < 7) {
+      errors.phone = 'Teléfono muy corto';
+    }
+    
+    return errors;
+  };
+
+  const handleImagePicker = async (type: 'logo' | 'images') => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permisos', 'Se necesita acceso a la galería para subir imágenes.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: type === 'logo' ? [1, 1] : [16, 9],
+        quality: 0.8,
+        allowsMultipleSelection: type === 'images',
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const uploadState = type === 'logo' ? setLogoUpload : setImagesUpload;
+        
+        uploadState({ uploading: true, progress: 0 });
+        
+        // Simulate upload progress
+        const interval = setInterval(() => {
+          uploadState(prev => ({ 
+            ...prev, 
+            progress: Math.min(prev.progress + 10, 90) 
+          }));
+        }, 200);
+
+        // TODO: Implement actual image upload to API
+        setTimeout(() => {
+          clearInterval(interval);
+          uploadState({ 
+            uploading: false, 
+            progress: 100, 
+            uri: result.assets[0].uri 
+          });
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }, 3000);
+      }
+    } catch (error) {
+      const uploadState = type === 'logo' ? setLogoUpload : setImagesUpload;
+      uploadState({ 
+        uploading: false, 
+        progress: 0, 
+        error: 'Error al subir imagen' 
+      });
+      Alert.alert('Error', 'No se pudo subir la imagen');
+    }
+  };
+
   const handleSubmit = async (values: EditFormData) => {
     if (!id) return;
 
     try {
       setIsSaving(true);
+      setValidationErrors({});
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      // Additional client-side validation
+      const clientErrors = validateFormData(values);
+      if (Object.keys(clientErrors).length > 0) {
+        setValidationErrors(clientErrors);
+        setIsSaving(false);
+        return;
+      }
 
       const success = await updateEntrepreneurship(id, values);
 
@@ -205,7 +354,13 @@ export default function EditEntrepreneurshipScreen() {
       }
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', err.message || 'Error inesperado');
+      
+      // Handle validation errors from API
+      if (err.validationErrors) {
+        setValidationErrors(err.validationErrors);
+      } else {
+        Alert.alert('Error', err.message || 'Error inesperado');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -321,6 +476,86 @@ export default function EditEntrepreneurshipScreen() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
+              {/* Image Upload Section */}
+              <ThemedView style={[styles.section, { backgroundColor: cardColor }]}>
+                <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>
+                  Imágenes del Proyecto
+                </ThemedText>
+
+                {/* Logo Upload */}
+                <View style={styles.imageUploadContainer}>
+                  <ThemedText style={[styles.imageLabel, { color: textColor }]}>
+                    Logo de la Empresa
+                  </ThemedText>
+                  <TouchableOpacity 
+                    style={[styles.imageUploadButton, { borderColor }]}
+                    onPress={() => handleImagePicker('logo')}
+                    disabled={logoUpload.uploading}
+                  >
+                    {logoUpload.uploading ? (
+                      <View style={styles.uploadProgress}>
+                        <ActivityIndicator size="small" color={iconColor} />
+                        <ThemedText style={[styles.uploadText, { color: textColor }]}>
+                          Subiendo... {logoUpload.progress}%
+                        </ThemedText>
+                      </View>
+                    ) : logoUpload.uri ? (
+                      <View style={styles.imagePreview}>
+                        <Image source={{ uri: logoUpload.uri }} style={styles.logoPreview} />
+                        <ThemedText style={[styles.uploadText, { color: textColor }]}>
+                          Toca para cambiar
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <View style={styles.uploadPlaceholder}>
+                        <Ionicons name="camera" size={32} color={secondaryTextColor} />
+                        <ThemedText style={[styles.uploadText, { color: secondaryTextColor }]}>
+                          Subir Logo
+                        </ThemedText>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {logoUpload.error && (
+                    <ThemedText style={styles.errorText}>
+                      {logoUpload.error}
+                    </ThemedText>
+                  )}
+                </View>
+
+                {/* Gallery Images Upload */}
+                <View style={styles.imageUploadContainer}>
+                  <ThemedText style={[styles.imageLabel, { color: textColor }]}>
+                    Imágenes de Galería
+                  </ThemedText>
+                  <TouchableOpacity 
+                    style={[styles.imageUploadButton, styles.galleryUpload, { borderColor }]}
+                    onPress={() => handleImagePicker('images')}
+                    disabled={imagesUpload.uploading}
+                  >
+                    {imagesUpload.uploading ? (
+                      <View style={styles.uploadProgress}>
+                        <ActivityIndicator size="small" color={iconColor} />
+                        <ThemedText style={[styles.uploadText, { color: textColor }]}>
+                          Subiendo... {imagesUpload.progress}%
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <View style={styles.uploadPlaceholder}>
+                        <Ionicons name="images" size={32} color={secondaryTextColor} />
+                        <ThemedText style={[styles.uploadText, { color: secondaryTextColor }]}>
+                          Subir Imágenes (hasta 5)
+                        </ThemedText>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {imagesUpload.error && (
+                    <ThemedText style={styles.errorText}>
+                      {imagesUpload.error}
+                    </ThemedText>
+                  )}
+                </View>
+              </ThemedView>
+
               {/* Basic Information */}
               <ThemedView style={[styles.section, { backgroundColor: cardColor }]}>
                 <ThemedText type="subtitle" style={[styles.sectionTitle, { color: textColor }]}>
@@ -336,17 +571,30 @@ export default function EditEntrepreneurshipScreen() {
                   required
                 />
 
-                <CustomInput
-                  label="Descripción"
-                  value={values.description}
-                  onChangeText={(text) => setFieldValue('description', text)}
-                  placeholder="Describe tu proyecto de emprendimiento..."
-                  multiline
-                  numberOfLines={4}
-                  error={touched.description && errors.description ? errors.description : undefined}
-                  required
-                  style={{ height: 100, textAlignVertical: 'top' }}
-                />
+                <View style={styles.fieldContainer}>
+                  <CustomInput
+                    label="Descripción"
+                    value={values.description}
+                    onChangeText={(text) => {
+                      setFieldValue('description', text);
+                      // Clear validation error when typing
+                      if (validationErrors.description) {
+                        setValidationErrors(prev => ({ ...prev, description: '' }));
+                      }
+                    }}
+                    placeholder="Describe detalladamente tu proyecto de emprendimiento..."
+                    multiline
+                    numberOfLines={6}
+                    error={touched.description && errors.description ? errors.description : validationErrors.description}
+                    required
+                    style={{ height: 120, textAlignVertical: 'top' }}
+                  />
+                  <View style={styles.characterCount}>
+                    <ThemedText style={[styles.characterCountText, { color: secondaryTextColor }]}>
+                      {values.description.length}/1000 caracteres
+                    </ThemedText>
+                  </View>
+                </View>
 
                 <View style={styles.fieldContainer}>
                   <ThemedText style={[styles.fieldLabel, { color: textColor }]}>
@@ -468,11 +716,17 @@ export default function EditEntrepreneurshipScreen() {
                 <CustomInput
                   label="Email de Contacto"
                   value={values.email}
-                  onChangeText={(text: string) => setFieldValue('email', text)}
+                  onChangeText={(text: string) => {
+                    setFieldValue('email', text.toLowerCase().trim());
+                    if (validationErrors.email) {
+                      setValidationErrors(prev => ({ ...prev, email: '' }));
+                    }
+                  }}
                   placeholder="contacto@miempresa.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  error={touched.email && errors.email ? errors.email : undefined}
+                  autoCorrect={false}
+                  error={touched.email && errors.email ? errors.email : validationErrors.email}
                   required
                 />
 
@@ -488,10 +742,18 @@ export default function EditEntrepreneurshipScreen() {
                 <CustomInput
                   label="Sitio Web"
                   value={values.website}
-                  onChangeText={(text: string) => setFieldValue('website', text)}
+                  onChangeText={(text: string) => {
+                    let formattedUrl = text.toLowerCase().trim();
+                    // Auto-add https:// if missing
+                    if (formattedUrl && !formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+                      formattedUrl = 'https://' + formattedUrl;
+                    }
+                    setFieldValue('website', formattedUrl);
+                  }}
                   placeholder="https://miempresa.com"
                   keyboardType="url"
                   autoCapitalize="none"
+                  autoCorrect={false}
                   error={touched.website && errors.website ? errors.website : undefined}
                 />
               </ThemedView>
@@ -560,7 +822,7 @@ export default function EditEntrepreneurshipScreen() {
                   placeholder="https://facebook.com/miempresa"
                   keyboardType="url"
                   autoCapitalize="none"
-                  error={touched.socialMedia?.facebook && errors.socialMedia?.facebook ? errors.socialMedia.facebook : undefined}
+                  error={touched.socialMedia?.facebook && errors.socialMedia?.facebook ? errors.socialMedia.facebook : validationErrors['socialMedia.facebook']}
                 />
 
                 <CustomInput
@@ -570,7 +832,7 @@ export default function EditEntrepreneurshipScreen() {
                   placeholder="https://instagram.com/miempresa"
                   keyboardType="url"
                   autoCapitalize="none"
-                  error={touched.socialMedia?.instagram && errors.socialMedia?.instagram ? errors.socialMedia.instagram : undefined}
+                  error={touched.socialMedia?.instagram && errors.socialMedia?.instagram ? errors.socialMedia.instagram : validationErrors['socialMedia.instagram']}
                 />
 
                 <CustomInput
@@ -580,7 +842,7 @@ export default function EditEntrepreneurshipScreen() {
                   placeholder="https://linkedin.com/company/miempresa"
                   keyboardType="url"
                   autoCapitalize="none"
-                  error={touched.socialMedia?.linkedin && errors.socialMedia?.linkedin ? errors.socialMedia.linkedin : undefined}
+                  error={touched.socialMedia?.linkedin && errors.socialMedia?.linkedin ? errors.socialMedia.linkedin : validationErrors['socialMedia.linkedin']}
                 />
 
                 <View style={styles.switchContainer}>
@@ -607,6 +869,43 @@ export default function EditEntrepreneurshipScreen() {
                       }
                     ]} />
                   </TouchableOpacity>
+                </View>
+                {/* Enhanced Visibility Controls */}
+                <View style={styles.visibilityContainer}>
+                  <View style={styles.switchContainer}>
+                    <View style={styles.switchContent}>
+                      <ThemedText style={[styles.switchLabel, { color: textColor }]}>
+                        Proyecto Público
+                      </ThemedText>
+                      <ThemedText style={[styles.switchDescription, { color: secondaryTextColor }]}>
+                        Permitir que otros usuarios vean este proyecto en el directorio público
+                      </ThemedText>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setFieldValue('isPublic', !values.isPublic)}
+                      style={[
+                        styles.switch,
+                        { backgroundColor: values.isPublic ? iconColor : borderColor }
+                      ]}
+                    >
+                      <View style={[
+                        styles.switchThumb,
+                        {
+                          backgroundColor: 'white',
+                          transform: [{ translateX: values.isPublic ? 20 : 2 }]
+                        }
+                      ]} />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {values.isPublic && (
+                    <View style={styles.publicInfoBox}>
+                      <Ionicons name="information-circle" size={16} color={iconColor} />
+                      <ThemedText style={[styles.publicInfoText, { color: secondaryTextColor }]}>
+                        Los proyectos públicos aparecen en búsquedas y pueden recibir contactos de otros emprendedores
+                      </ThemedText>
+                    </View>
+                  )}
                 </View>
               </ThemedView>
 
@@ -775,5 +1074,72 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  // Image Upload Styles
+  imageUploadContainer: {
+    marginBottom: 20,
+  },
+  imageLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  imageUploadButton: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    minHeight: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  galleryUpload: {
+    minHeight: 80,
+  },
+  uploadProgress: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  uploadPlaceholder: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  uploadText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  imagePreview: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoPreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
+  // Enhanced Form Styles
+  characterCount: {
+    alignItems: 'flex-end',
+    marginTop: 4,
+  },
+  characterCountText: {
+    fontSize: 12,
+  },
+  visibilityContainer: {
+    marginTop: 16,
+  },
+  publicInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 8,
+  },
+  publicInfoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

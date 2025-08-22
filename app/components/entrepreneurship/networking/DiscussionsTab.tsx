@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { ThemedText } from '@/app/components/ThemedText';
 import { ThemedView } from '@/app/components/ThemedView';
 import { useThemeColor } from '@/app/hooks/useThemeColor';
+import Shimmer from '@/app/components/Shimmer';
 
 interface Discussion {
   id: string;
@@ -56,62 +57,40 @@ const DiscussionsTab: React.FC<DiscussionsTabProps> = ({
   // State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  // Mock discussions data (in real app, this would come from props or API)
-  const [discussions] = useState<Discussion[]>([
-    {
-      id: '1',
-      title: 'Estrategias de marketing digital para startups',
-      description: 'Discutamos las mejores prácticas para promocionar productos digitales con presupuesto limitado...',
-      authorName: 'María González',
-      authorAvatar: undefined,
-      participantCount: 24,
-      messageCount: 89,
-      lastActivity: '2024-01-20T14:30:00Z',
-      tags: ['marketing', 'startups', 'digital'],
-      isActive: true,
-      category: 'Marketing',
-    },
-    {
-      id: '2',
-      title: 'Financiamiento para emprendimientos sociales',
-      description: 'Compartamos experiencias sobre cómo conseguir fondos para proyectos con impacto social...',
-      authorName: 'Carlos Mendoza',
-      authorAvatar: undefined,
-      participantCount: 18,
-      messageCount: 52,
-      lastActivity: '2024-01-19T16:45:00Z',
-      tags: ['financiamiento', 'impacto social', 'grants'],
-      isActive: true,
-      category: 'Financiamiento',
-    },
-    {
-      id: '3',
-      title: 'Herramientas tecnológicas gratuitas para emprendedores',
-      description: 'Lista y recomendaciones de software y plataformas gratuitas que todo emprendedor debería conocer...',
-      authorName: 'Ana Rodríguez',
-      authorAvatar: undefined,
-      participantCount: 31,
-      messageCount: 124,
-      lastActivity: '2024-01-18T11:20:00Z',
-      tags: ['tecnología', 'herramientas', 'gratuito'],
-      isActive: true,
-      category: 'Tecnología',
-    },
-    {
-      id: '4',
-      title: 'Networking efectivo en eventos presenciales',
-      description: 'Tips y estrategias para hacer conexiones valiosas en ferias, conferencias y eventos de emprendimiento...',
-      authorName: 'Roberto Silva',
-      authorAvatar: undefined,
-      participantCount: 15,
-      messageCount: 38,
-      lastActivity: '2024-01-17T09:15:00Z',
-      tags: ['networking', 'eventos', 'conexiones'],
-      isActive: false,
-      category: 'Networking',
-    },
-  ]);
+  const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const [loadingDiscussions, setLoadingDiscussions] = useState(true);
+  const [discussionsError, setDiscussionsError] = useState<string | null>(null);
+  
+  // Load discussions data - Using mock data for now until API is available
+  // TODO: Replace with actual API call when discussions endpoint is implemented
+  const loadDiscussions = useCallback(async () => {
+    setLoadingDiscussions(true);
+    setDiscussionsError(null);
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For now, keep empty array - remove this when API is available
+      setDiscussions([]);
+      
+      // TODO: Uncomment when discussions API is available
+      // const response = await entrepreneurshipApiService.getDiscussions(token);
+      // if (response.success && response.data) {
+      //   setDiscussions(response.data);
+      // } else {
+      //   setDiscussionsError(response.error?.message || 'Error fetching discussions');
+      // }
+    } catch (error: any) {
+      setDiscussionsError(error.message || 'Error loading discussions');
+    } finally {
+      setLoadingDiscussions(false);
+    }
+  }, []);
+  
+  useEffect(() => {
+    loadDiscussions();
+  }, [loadDiscussions]);
 
   // Categories for filtering
   const categories = [
@@ -351,6 +330,41 @@ const DiscussionsTab: React.FC<DiscussionsTabProps> = ({
     </View>
   );
 
+  // Loading state
+  if (loadingDiscussions) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <View style={styles.listContent}>
+          <SearchHeader />
+          {[1, 2, 3].map((_, index) => (
+            <Shimmer key={index}>
+              <View style={[styles.skeletonCard, { backgroundColor: `${tintColor}20` }]} />
+            </Shimmer>
+          ))}
+        </View>
+      </ThemedView>
+    );
+  }
+  
+  // Error state
+  if (discussionsError) {
+    return (
+      <ThemedView style={[styles.container, { backgroundColor }]}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
+          <ThemedText style={styles.errorTitle}>Error al cargar discusiones</ThemedText>
+          <ThemedText style={styles.errorMessage}>{discussionsError}</ThemedText>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: tintColor }]}
+            onPress={loadDiscussions}
+          >
+            <ThemedText style={styles.retryButtonText}>Reintentar</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
       <FlatList
@@ -589,6 +603,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  skeletonCard: {
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

@@ -1,21 +1,24 @@
 import { DashboardHeader } from '@/app/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/app/components/dashboard/MetricCard';
-import { QuickAccessCard } from '@/app/components/dashboard/QuickAccessCard';
-import { MobileNewsCarousel } from '@/app/components/news/MobileNewsCarousel';
 import { ThemedText } from '@/app/components/ThemedText';
 import { ThemedView } from '@/app/components/ThemedView';
+import Shimmer from '@/app/components/Shimmer';
 import { useAuthStore } from '@/app/store/authStore';
-import { DashboardMetric, QuickAccessCard as QuickAccessCardType, UserDashboardData } from '@/app/types/dashboard';
+import { DashboardMetric, UserDashboardData } from '@/app/types/dashboard';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View, TouchableOpacity, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { profile, user, isAuthenticated } = useAuthStore();
+  const { profile, user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<UserDashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // If not authenticated, ensure redirect happens (handled by _layout.tsx)
   useEffect(() => {
@@ -24,31 +27,32 @@ export default function HomeScreen() {
     }
   }, [isAuthenticated, user, router]);
 
-  // Mock data generation based on user profile
+  // Enhanced mock data generation based on user profile and feature analysis
   const generateDashboardData = useCallback((): UserDashboardData => {
     const firstName = profile?.first_name || 'Usuario';
     
+    // Reduced to 4 key metrics that are most important for mobile users
     const metrics: DashboardMetric[] = [
       {
         id: 'applications',
         title: 'Postulaciones Activas',
-        value: 3,
-        icon: 'document-text-outline',
+        value: 5,
+        icon: 'briefcase-outline',
         trend: 'up',
-        trendValue: '+2'
+        trendValue: '+3'
       },
       {
-        id: 'courses',
-        title: 'Cursos en Progreso',
-        value: 2,
-        icon: 'school-outline',
-        trend: 'stable',
-        trendValue: '0'
+        id: 'cv_completion',
+        title: 'Perfil CV Completo',
+        value: '85%',
+        icon: 'document-text-outline',
+        trend: 'up',
+        trendValue: '+15%'
       },
       {
         id: 'projects',
-        title: 'Proyecto Emprendimiento',
-        value: 1,
+        title: 'Proyectos Emprendimiento',
+        value: 2,
         icon: 'bulb-outline',
         trend: 'up',
         trendValue: '+1'
@@ -56,192 +60,126 @@ export default function HomeScreen() {
       {
         id: 'response_rate',
         title: 'Tasa de Respuesta',
-        value: '53%',
+        value: '67%',
         icon: 'trending-up-outline',
         trend: 'up',
-        trendValue: '+8%'
-      }
-    ];
-
-    const quickAccessCards: QuickAccessCardType[] = [
-      {
-        id: 'jobs',
-        title: 'Búsqueda de Empleo',
-        description: 'Encuentra oportunidades laborales que se ajusten a tu perfil',
-        icon: 'briefcase-outline',
-        metrics: ['156 Ofertas Activas', '3 Postulaciones', '1 Entrevistas'],
-        route: '/(private)/jobs',
-        actions: [
-          {
-            id: 'explore_jobs',
-            title: 'Explorar Ofertas',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push('/(private)/jobs');
-            },
-            variant: 'primary'
-          },
-          {
-            id: 'my_applications',
-            title: 'Mis Postulaciones',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(private)/jobs');
-            }
-          },
-          {
-            id: 'create_alert',
-            title: 'Crear Alerta',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(private)/jobs');
-            }
-          }
-        ]
-      },
-      {
-        id: 'training',
-        title: 'Capacitación y Recursos Formativos',
-        description: 'Desarrolla nuevas habilidades y obtén certificaciones',
-        icon: 'school-outline',
-        metrics: ['45 Cursos Disponibles', '2 En Progreso', '8 Completados'],
-        route: '/(private)/training',
-        actions: [
-          {
-            id: 'view_courses',
-            title: 'Ver Cursos',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push('/(private)/training');
-            },
-            variant: 'primary'
-          },
-          {
-            id: 'my_courses',
-            title: 'Mis Cursos',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(private)/training');
-            }
-          },
-          {
-            id: 'certificates',
-            title: 'Certificados',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(private)/training');
-            }
-          }
-        ]
-      },
-      {
-        id: 'entrepreneurship',
-        title: 'Emprendimiento',
-        description: 'Convierte tus ideas en negocios exitosos',
-        icon: 'bulb-outline',
-        metrics: ['28 Recursos', '12 Mentorías', '1 Mi Proyecto'],
-        route: '/(private)/entrepreneurship',
-        actions: [
-          {
-            id: 'business_ideas',
-            title: 'Ideas de Negocio',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push('/(private)/entrepreneurship');
-            },
-            variant: 'primary'
-          },
-          {
-            id: 'find_mentor',
-            title: 'Buscar Mentor',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(private)/entrepreneurship');
-            }
-          },
-          {
-            id: 'my_project',
-            title: 'Mi Proyecto',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(private)/entrepreneurship');
-            }
-          }
-        ]
-      },
-      {
-        id: 'reports',
-        title: 'Reportes Personales',
-        description: 'Analiza tu progreso y rendimiento laboral',
-        icon: 'analytics-outline',
-        metrics: ['15 Postulaciones', '8 Respuestas', '53% Tasa Éxito'],
-        route: '/(private)/profile',
-        actions: [
-          {
-            id: 'view_reports',
-            title: 'Ver Reportes',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push('/(private)/profile');
-            },
-            variant: 'primary'
-          },
-          {
-            id: 'cv_analysis',
-            title: 'Análisis CV',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(private)/profile');
-            }
-          },
-          {
-            id: 'progress',
-            title: 'Progreso',
-            action: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(private)/profile');
-            }
-          }
-        ]
+        trendValue: '+14%'
       }
     ];
 
     return {
-      welcomeMessage: `¡Bienvenido ${firstName}!`,
-      subtitle: 'Explora oportunidades de empleo, desarrolla tus habilidades y construye tu futuro profesional',
+      welcomeMessage: `¡Hola ${firstName}!`,
+      subtitle: 'Tu plataforma integral para el desarrollo profesional y emprendedor',
       metrics,
-      quickAccessCards
+      quickAccessCards: [] // Removed the modules section as requested
     };
   }, [profile, router]);
 
-  // Initialize dashboard data
+  // Initialize dashboard data with loading state
   useEffect(() => {
-    if (profile) {
-      setDashboardData(generateDashboardData());
-    }
-  }, [profile, generateDashboardData]);
+    const initializeDashboard = async () => {
+      console.log('🏠 Dashboard initialization - Auth Loading:', authLoading, 'Authenticated:', isAuthenticated, 'User:', !!user);
+      
+      // Don't initialize if auth is still loading
+      if (authLoading) {
+        console.log('🏠 Dashboard waiting for auth to complete...');
+        return;
+      }
+      
+      setIsLoading(true);
+      
+      // Wait for auth to be ready - _layout.tsx handles redirect if not authenticated
+      if (!isAuthenticated || !user) {
+        console.log('🏠 Dashboard - User not authenticated, stopping initialization');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('🏠 Dashboard - Starting data generation for user:', user.firstName);
+      
+      // Simulate loading time for better UX
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Generate dashboard data (profile is computed from user)
+      const data = generateDashboardData();
+      setDashboardData(data);
+      setIsLoading(false);
+      
+      console.log('🏠 Dashboard - Data loaded successfully:', data.welcomeMessage);
+    };
 
-  // Pull to refresh handler
+    initializeDashboard();
+  }, [authLoading, isAuthenticated, user, generateDashboardData]);
+
+  // Enhanced pull to refresh handler
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Regenerate data (in real app, fetch from API)
-    setDashboardData(generateDashboardData());
-    
-    setIsRefreshing(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      // Simulate API calls for real data refresh
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      
+      // Regenerate data with updated metrics
+      setDashboardData(generateDashboardData());
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error('Error refreshing dashboard:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [generateDashboardData]);
 
-  if (!dashboardData) {
-    return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Cargando dashboard...</ThemedText>
-      </ThemedView>
-    );
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
+    <ThemedView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        {/* Header skeleton */}
+        <Shimmer>
+          <View style={styles.headerSkeleton} />
+        </Shimmer>
+        
+        <View style={styles.content}>
+          {/* Metrics skeleton */}
+          <View style={styles.metricsSection}>
+            <Shimmer>
+              <View style={styles.sectionTitleSkeleton} />
+            </Shimmer>
+            <View style={styles.metricsGrid}>
+              {[1, 2, 3, 4].map((index) => (
+                <Shimmer key={index}>
+                  <View style={styles.metricCardSkeleton} />
+                </Shimmer>
+              ))}
+            </View>
+          </View>
+
+          {/* Quick actions skeleton */}
+          <View style={styles.quickActionsSection}>
+            <Shimmer>
+              <View style={styles.sectionTitleSkeleton} />
+            </Shimmer>
+            <View style={styles.quickActionsGrid}>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((index) => (
+                <Shimmer key={index}>
+                  <View style={styles.quickActionSkeleton} />
+                </Shimmer>
+              ))}
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </ThemedView>
+  );
+
+  // Show loading skeleton while initializing
+  if (authLoading || isLoading || !dashboardData) {
+    console.log('🏠 Dashboard showing skeleton - Auth Loading:', authLoading, 'Dashboard Loading:', isLoading, 'Has Data:', !!dashboardData);
+    return <LoadingSkeleton />;
   }
+
+  console.log('🏠 Dashboard rendering content - User:', user?.firstName, 'Dashboard Data:', dashboardData.welcomeMessage);
 
   return (
     <ThemedView style={styles.container}>
@@ -254,6 +192,7 @@ export default function HomeScreen() {
             onRefresh={onRefresh}
             tintColor="#667eea"
             colors={['#667eea']}
+            progressBackgroundColor="#ffffff"
           />
         }
       >
@@ -264,10 +203,13 @@ export default function HomeScreen() {
         />
 
         <View style={styles.content}>
-          {/* Metrics Grid */}
+          {/* Metrics Grid - Redesigned for mobile */}
           <View style={styles.metricsSection}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>
               Panel de Control
+            </ThemedText>
+            <ThemedText style={styles.sectionSubtitle}>
+              Resumen de tu actividad y progreso
             </ThemedText>
             <View style={styles.metricsGrid}>
               {dashboardData.metrics.map((metric) => (
@@ -276,34 +218,121 @@ export default function HomeScreen() {
                   metric={metric}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    // Navigate to specific metric detail if needed
+                    // Navigate based on metric type
+                    if (metric.id === 'applications') {
+                      router.push('/(private)/jobs');
+                    } else if (metric.id === 'courses') {
+                      router.push('/(private)/training');
+                    } else if (metric.id === 'projects') {
+                      router.push('/(private)/entrepreneurship');
+                    } else if (metric.id === 'cv_completion') {
+                      router.push('/(private)/cv');
+                    } else if (metric.id === 'response_rate') {
+                      router.push('/(private)/jobs');
+                    }
                   }}
                 />
               ))}
             </View>
           </View>
 
-          {/* News Carousel */}
-          <View style={styles.newsSection}>
-            <MobileNewsCarousel
-              title="Noticias Destacadas"
-              subtitle="Mantente informado sobre las últimas oportunidades y anuncios importantes"
-              maxItems={6}
-              enableNavigation={true}
-            />
-          </View>
-
-          {/* Quick Access Cards */}
-          <View style={styles.quickAccessSection}>
+          {/* Quick Actions - The main feature */}
+          <View style={styles.quickActionsSection}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Acceso Rápido
+              Acciones Rápidas
             </ThemedText>
-            {dashboardData.quickAccessCards.map((card) => (
-              <QuickAccessCard
-                key={card.id}
-                card={card}
-              />
-            ))}
+            <ThemedText style={styles.sectionSubtitle}>
+              Accede rápidamente a las funciones más importantes
+            </ThemedText>
+            <View style={styles.quickActionsGrid}>
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/(private)/jobs');
+                }}
+              >
+                <Ionicons name="search-outline" size={28} color="#667eea" />
+                <ThemedText style={styles.quickActionText}>Buscar Empleos</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/(private)/cv');
+                }}
+              >
+                <Ionicons name="document-text-outline" size={28} color="#667eea" />
+                <ThemedText style={styles.quickActionText}>Mi CV</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/(private)/entrepreneurship');
+                }}
+              >
+                <Ionicons name="bulb-outline" size={28} color="#667eea" />
+                <ThemedText style={styles.quickActionText}>Emprendimiento</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/(private)/training');
+                }}
+              >
+                <Ionicons name="school-outline" size={28} color="#667eea" />
+                <ThemedText style={styles.quickActionText}>Capacitación</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/(private)/news');
+                }}
+              >
+                <Ionicons name="newspaper-outline" size={28} color="#667eea" />
+                <ThemedText style={styles.quickActionText}>Noticias</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/(private)/entrepreneurship/messaging');
+                }}
+              >
+                <Ionicons name="chatbubbles-outline" size={28} color="#667eea" />
+                <ThemedText style={styles.quickActionText}>Mensajes</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/(private)/entrepreneurship/directory');
+                }}
+              >
+                <Ionicons name="business-outline" size={28} color="#667eea" />
+                <ThemedText style={styles.quickActionText}>Directorio</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/(private)/profile');
+                }}
+              >
+                <Ionicons name="person-outline" size={28} color="#667eea" />
+                <ThemedText style={styles.quickActionText}>Mi Perfil</ThemedText>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -319,30 +348,97 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 24, // Increased padding for better mobile layout
+    paddingTop: 24,
     paddingBottom: 40,
   },
   metricsSection: {
-    marginBottom: 30,
+    marginBottom: 40, // Increased spacing between sections
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-    paddingHorizontal: 4,
+    fontSize: 20, // Larger title for mobile
+    fontWeight: '700',
+    marginBottom: 8,
+    paddingHorizontal: 0,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginBottom: 24, // Increased margin for better spacing
+    paddingHorizontal: 0,
+    lineHeight: 20,
   },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginHorizontal: -6,
+    marginHorizontal: -8, // Adjusted for better spacing
   },
-  newsSection: {
-    marginBottom: 30,
-    marginHorizontal: -20, // Compensate for container padding to allow full-width carousel
+  quickActionsSection: {
+    marginBottom: 20,
   },
-  quickAccessSection: {
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginHorizontal: -12, // Increased margin for better spacing
+  },
+  quickActionButton: {
+    width: (width - 48 - 24) / 2, // Account for increased container padding and margins
+    backgroundColor: 'rgba(102, 126, 234, 0.08)',
+    borderRadius: 16, // Larger border radius for modern look
+    padding: 20, // Increased padding for better touch targets
+    marginHorizontal: 12,
+    marginBottom: 20, // Increased bottom margin
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 100, // Increased height for better usability
+    borderWidth: 1,
+    borderColor: 'rgba(102, 126, 234, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  quickActionText: {
+    fontSize: 13, // Slightly larger text
+    fontWeight: '600',
+    marginTop: 12, // Increased margin from icon
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  
+  // Loading skeleton styles
+  headerSkeleton: {
+    height: 140,
+    backgroundColor: '#f0f0f0',
+    marginBottom: 24,
+    borderRadius: 16,
+  },
+  sectionTitleSkeleton: {
+    height: 24,
+    width: 180,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  metricCardSkeleton: {
+    width: (width - 48 - 16) / 2, // Match metric card width
+    height: 120, // Increased height to match new design
+    backgroundColor: '#f0f0f0',
+    borderRadius: 16,
+    margin: 8,
+  },
+  quickActionSkeleton: {
+    width: (width - 48 - 24) / 2, // Match quick action button width
+    height: 100,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 16,
+    marginHorizontal: 12,
     marginBottom: 20,
   },
 }); 

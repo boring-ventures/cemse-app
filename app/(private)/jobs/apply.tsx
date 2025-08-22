@@ -37,7 +37,7 @@ export default function ApplyScreen() {
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const iconColor = useThemeColor({}, 'tint');
 
-  const { hasCV, hasCoverLetter, cvUrl, coverLetterUrl, checkCVStatus } = useCVStatus();
+  const { hasCV, hasCoverLetter, cvUrl, coverLetterUrl, loading: cvLoading, checkCVStatus } = useCVStatus();
   const { questions, loading: questionsLoading, error: questionsError, fetchQuestions } = useJobQuestions();
   const { toast } = useToast();
 
@@ -156,6 +156,30 @@ export default function ApplyScreen() {
     applicationForm.validateForm();
   };
 
+  // Utility function to extract filename from URL
+  const extractFileName = (url: string): string => {
+    if (!url) return 'Documento';
+    
+    try {
+      // Extract filename from URL path
+      const urlPath = new URL(url).pathname;
+      const fileName = urlPath.split('/').pop() || 'Documento';
+      
+      // If filename is too long, truncate it
+      if (fileName.length > 30) {
+        const extension = fileName.split('.').pop();
+        const name = fileName.substring(0, 25);
+        return `${name}...${extension ? '.' + extension : ''}`;
+      }
+      
+      return fileName;
+    } catch (error) {
+      // If URL parsing fails, try to extract from the end of the string
+      const parts = url.split('/');
+      return parts[parts.length - 1] || 'Documento';
+    }
+  };
+
   const applicationForm = useFormik<ApplicationForm>({
     initialValues: {
       coverLetter: '',
@@ -165,6 +189,7 @@ export default function ApplyScreen() {
       availableStartDate: '',
       salaryExpectation: undefined,
     },
+    enableReinitialize: true, // Re-initialize when CV status changes
     validate: (values) => {
       const errors: any = {};
       
@@ -624,30 +649,131 @@ export default function ApplyScreen() {
             style={styles.formField}
           />
 
-          {/* CV Selection */}
+          {/* CV and Cover Letter Status */}
           <View style={styles.cvSection}>
             <ThemedText style={[styles.fieldLabel, { color: textColor }]}>
-              Currículum Vitae *
+              Documentos requeridos *
             </ThemedText>
-            <TouchableOpacity style={[styles.cvSelector, { borderColor }]}>
-              <View style={styles.cvSelectorContent}>
-                <Ionicons name="document-text-outline" size={24} color={iconColor} />
-                <View style={styles.cvSelectorText}>
-                  <ThemedText style={[styles.cvSelectorTitle, { color: textColor }]}>
-                    CV_Juan_Perez_2025.pdf
-                  </ThemedText>
-                  <ThemedText style={[styles.cvSelectorSubtitle, { color: secondaryTextColor }]}>
-                    Actualizado hace 2 días
-                  </ThemedText>
+            <ThemedText style={[styles.documentHint, { color: secondaryTextColor }]}>
+              Necesitas al menos un CV o carta de presentación PDF
+            </ThemedText>
+            
+            {cvLoading ? (
+              <Shimmer>
+                <View style={styles.documentLoadingContainer}>
+                  <View style={[styles.documentLoadingSkeleton, { backgroundColor: secondaryTextColor + '30', borderColor }]} />
+                  <View style={[styles.documentLoadingSkeleton, { backgroundColor: secondaryTextColor + '30', borderColor }]} />
                 </View>
+              </Shimmer>
+            ) : (
+              <>
+            {/* CV Status */}
+            <View style={styles.documentItem}>
+              <View style={[styles.documentSelector, { borderColor: hasCV ? '#32D74B' : borderColor }]}>
+                <View style={styles.documentSelectorContent}>
+                  <Ionicons 
+                    name={hasCV ? "document-text" : "document-text-outline"} 
+                    size={24} 
+                    color={hasCV ? '#32D74B' : iconColor} 
+                  />
+                  <View style={styles.documentSelectorText}>
+                    <ThemedText style={[styles.documentSelectorTitle, { color: textColor }]}>
+                      {hasCV ? (
+                        cvUrl ? extractFileName(cvUrl) : 'CV disponible'
+                      ) : (
+                        'Sin CV'
+                      )}
+                    </ThemedText>
+                    <ThemedText style={[styles.documentSelectorSubtitle, { color: secondaryTextColor }]}>
+                      {hasCV ? 'CV cargado correctamente' : 'No has subido un CV'}
+                    </ThemedText>
+                  </View>
+                </View>
+                {hasCV ? (
+                  <Ionicons name="checkmark-circle" size={20} color="#32D74B" />
+                ) : (
+                  <Ionicons name="close-circle" size={20} color="#FF453A" />
+                )}
               </View>
-              <Ionicons name="checkmark-circle" size={20} color="#32D74B" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cvChangeButton}>
-              <ThemedText style={[styles.cvChangeText, { color: iconColor }]}>
-                Cambiar CV
-              </ThemedText>
-            </TouchableOpacity>
+            </View>
+
+            {/* Cover Letter Status */}
+            <View style={styles.documentItem}>
+              <View style={[styles.documentSelector, { borderColor: hasCoverLetter ? '#32D74B' : borderColor }]}>
+                <View style={styles.documentSelectorContent}>
+                  <Ionicons 
+                    name={hasCoverLetter ? "document-text" : "document-text-outline"} 
+                    size={24} 
+                    color={hasCoverLetter ? '#32D74B' : iconColor} 
+                  />
+                  <View style={styles.documentSelectorText}>
+                    <ThemedText style={[styles.documentSelectorTitle, { color: textColor }]}>
+                      {hasCoverLetter ? (
+                        coverLetterUrl ? extractFileName(coverLetterUrl) : 'Carta de presentación disponible'
+                      ) : (
+                        'Sin carta de presentación'
+                      )}
+                    </ThemedText>
+                    <ThemedText style={[styles.documentSelectorSubtitle, { color: secondaryTextColor }]}>
+                      {hasCoverLetter ? 'Carta cargada correctamente' : 'No has subido una carta de presentación'}
+                    </ThemedText>
+                  </View>
+                </View>
+                {hasCoverLetter ? (
+                  <Ionicons name="checkmark-circle" size={20} color="#32D74B" />
+                ) : (
+                  <Ionicons name="close-circle" size={20} color="#FF453A" />
+                )}
+              </View>
+            </View>
+
+            {/* Document Management Actions */}
+            <View style={styles.documentActions}>
+              {(!hasCV && !hasCoverLetter) ? (
+                <TouchableOpacity 
+                  style={[styles.uploadDocumentButton, { backgroundColor: iconColor }]}
+                  onPress={() => setShowCVCheck(true)}
+                >
+                  <Ionicons name="cloud-upload-outline" size={20} color="white" />
+                  <ThemedText style={[styles.uploadDocumentButtonText, { color: 'white' }]}>
+                    Subir documentos
+                  </ThemedText>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.documentManagementActions}>
+                  <TouchableOpacity 
+                    style={[styles.manageDocumentButton, { borderColor: iconColor }]}
+                    onPress={() => setShowCVCheck(true)}
+                  >
+                    <Ionicons name="settings-outline" size={16} color={iconColor} />
+                    <ThemedText style={[styles.manageDocumentText, { color: iconColor }]}>
+                      Gestionar documentos
+                    </ThemedText>
+                  </TouchableOpacity>
+                  
+                  {hasCV && cvUrl && (
+                    <TouchableOpacity style={[styles.viewDocumentButton, { borderColor: secondaryTextColor }]}>
+                      <Ionicons name="eye-outline" size={16} color={secondaryTextColor} />
+                      <ThemedText style={[styles.viewDocumentText, { color: secondaryTextColor }]}>
+                        Ver CV
+                      </ThemedText>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Document Status Summary */}
+            {!hasCV && !hasCoverLetter && (
+              <View style={[styles.documentWarning, { backgroundColor: '#FF453A' + '15', borderColor: '#FF453A' }]}>
+                <Ionicons name="warning-outline" size={16} color="#FF453A" />
+                <ThemedText style={[styles.documentWarningText, { color: '#FF453A' }]}>
+                  Debes subir al menos un documento para aplicar
+                </ThemedText>
+              </View>
+            )}
+              </>
+            )}
           </View>
 
           {/* Additional Documents */}
@@ -892,7 +1018,15 @@ const styles = StyleSheet.create({
   cvSection: {
     marginBottom: 20,
   },
-  cvSelector: {
+  documentHint: {
+    fontSize: 12,
+    marginBottom: 16,
+    fontStyle: 'italic',
+  },
+  documentItem: {
+    marginBottom: 12,
+  },
+  documentSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -901,29 +1035,91 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
   },
-  cvSelectorContent: {
+  documentSelectorContent: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  cvSelectorText: {
+  documentSelectorText: {
     marginLeft: 12,
     flex: 1,
   },
-  cvSelectorTitle: {
+  documentSelectorTitle: {
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 2,
   },
-  cvSelectorSubtitle: {
+  documentSelectorSubtitle: {
     fontSize: 12,
   },
-  cvChangeButton: {
-    alignSelf: 'flex-start',
+  documentActions: {
+    marginTop: 8,
   },
-  cvChangeText: {
+  uploadDocumentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  uploadDocumentButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  documentManagementActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  manageDocumentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  manageDocumentText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  viewDocumentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  viewDocumentText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  documentWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 12,
+    gap: 8,
+  },
+  documentWarningText: {
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+  },
+  documentLoadingContainer: {
+    gap: 12,
+  },
+  documentLoadingSkeleton: {
+    height: 64,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   documentsSection: {
     marginBottom: 20,

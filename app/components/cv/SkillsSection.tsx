@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -67,14 +67,14 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
 
   return (
     <CollapsibleSection
-      title="Skills"
+      title="Habilidades"
       isCollapsed={isCollapsed}
       onToggle={onToggle}
       icon={<Ionicons name="bulb-outline" size={20} color={tintColor} />}
     >
       <View style={styles.container}>
         <ThemedText style={styles.description}>
-          Add your technical and professional skills
+          Agrega tus habilidades técnicas y profesionales
         </ThemedText>
 
         {/* Add Skill Input */}
@@ -84,7 +84,7 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
               style={[styles.input, { color: textColor }]}
               value={newSkill}
               onChangeText={onNewSkillChange}
-              placeholder="Enter a skill (e.g., JavaScript, Project Management)"
+              placeholder="Ingresa una habilidad (ej: JavaScript, Gestión de Proyectos)"
               placeholderTextColor={borderColor}
               onSubmitEditing={onAddSkill}
               returnKeyType="done"
@@ -105,7 +105,7 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
         {/* Skills Display */}
         {skills.length > 0 ? (
           <View style={styles.skillsContainer}>
-            <ThemedText style={styles.skillsLabel}>Your Skills ({skills.length})</ThemedText>
+            <ThemedText style={styles.skillsLabel}>Tus Habilidades ({skills.length})</ThemedText>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -125,33 +125,33 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="bulb-outline" size={48} color={borderColor} />
-            <ThemedText style={styles.emptyText}>No skills added yet</ThemedText>
+            <ThemedText style={styles.emptyText}>Aún no se han agregado habilidades</ThemedText>
             <ThemedText style={styles.emptySubtext}>
-              Start adding your technical and professional skills
+              Comienza agregando tus habilidades técnicas y profesionales
             </ThemedText>
           </View>
         )}
 
         {/* Skill Categories Suggestions */}
         <View style={styles.suggestionsContainer}>
-          <ThemedText style={styles.suggestionsTitle}>Skill Categories:</ThemedText>
+          <ThemedText style={styles.suggestionsTitle}>Categorías de Habilidades:</ThemedText>
           <View style={styles.suggestions}>
             <View style={styles.suggestionCategory}>
-              <ThemedText style={styles.categoryTitle}>Technical:</ThemedText>
+              <ThemedText style={styles.categoryTitle}>Técnicas:</ThemedText>
               <ThemedText style={styles.categoryExamples}>
                 JavaScript, Python, React, SQL, Adobe Photoshop
               </ThemedText>
             </View>
             <View style={styles.suggestionCategory}>
-              <ThemedText style={styles.categoryTitle}>Professional:</ThemedText>
+              <ThemedText style={styles.categoryTitle}>Profesionales:</ThemedText>
               <ThemedText style={styles.categoryExamples}>
-                Project Management, Leadership, Communication, Problem Solving
+                Gestión de Proyectos, Liderazgo, Comunicación, Resolución de Problemas
               </ThemedText>
             </View>
             <View style={styles.suggestionCategory}>
-              <ThemedText style={styles.categoryTitle}>Languages:</ThemedText>
+              <ThemedText style={styles.categoryTitle}>Idiomas:</ThemedText>
               <ThemedText style={styles.categoryExamples}>
-                Spanish (Native), English (Advanced), Portuguese (Intermediate)
+                Español (Nativo), Inglés (Avanzado), Portugués (Intermedio)
               </ThemedText>
             </View>
           </View>
@@ -271,4 +271,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SkillsSection;
+export default memo(SkillsSection);

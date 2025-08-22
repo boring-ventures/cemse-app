@@ -287,6 +287,7 @@ export interface OfflineAction {
   data: any;
   timestamp: number;
   id: string;
+  attempts?: number; // Track retry attempts for sync management
 }
 
 export interface CVStorageService {
@@ -328,10 +329,19 @@ export interface TemplateRenderer {
 export interface NetworkSyncHook {
   isOnline: boolean;
   pendingUpdates: Array<Partial<CVData>>;
-  syncPendingUpdates: () => Promise<void>;
+  syncPendingUpdates: (forceRetry?: boolean) => Promise<void>;
   queueUpdate: (update: Partial<CVData>) => void;
   forceSync: () => Promise<void>;
   clearPendingUpdates: () => Promise<void>;
+  emergencyStop: () => Promise<void>;
+  retryAttempts: number;
+  syncInProgress: boolean;
+  lastSyncAttempt: Date | null;
+  failedItemsCount: number;
+  cleanupFailedItems: () => Promise<void>;
+  getNextRetryDelay: () => number | null;
+  canRetry: () => boolean;
+  getSyncStatus: () => 'syncing' | 'idle' | 'failed' | 'offline' | 'pending';
 }
 
 // Constants for validation

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -185,6 +185,32 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
             placeholder="Street address"
           />
 
+          <CVFormField
+            label="Address Line 2"
+            value={personalInfo?.addressLine || ''}
+            onChangeText={(value) => handleFieldChange('addressLine', value)}
+            placeholder="Apartment, suite, etc. (optional)"
+          />
+
+          <View style={styles.formRow}>
+            <View style={styles.formColumn}>
+              <CVFormField
+                label="City"
+                value={personalInfo?.city || ''}
+                onChangeText={(value) => handleFieldChange('city', value)}
+                placeholder="City"
+              />
+            </View>
+            <View style={styles.formColumn}>
+              <CVFormField
+                label="State"
+                value={personalInfo?.state || ''}
+                onChangeText={(value) => handleFieldChange('state', value)}
+                placeholder="State/Province"
+              />
+            </View>
+          </View>
+
           <View style={styles.formRow}>
             <View style={styles.formColumn}>
               <CVFormField
@@ -328,4 +354,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PersonalInfoSection;
+export default memo(PersonalInfoSection);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   View,
   Text,
@@ -67,14 +67,14 @@ const InterestsSection: React.FC<InterestsSectionProps> = ({
 
   return (
     <CollapsibleSection
-      title="Interests & Hobbies"
+      title="Intereses y Pasatiempos"
       isCollapsed={isCollapsed}
       onToggle={onToggle}
       icon={<Ionicons name="heart-outline" size={20} color={tintColor} />}
     >
       <View style={styles.container}>
         <ThemedText style={styles.description}>
-          Add your personal interests, hobbies, and activities
+          Agrega tus intereses personales, pasatiempos y actividades
         </ThemedText>
 
         {/* Add Interest Input */}
@@ -84,7 +84,7 @@ const InterestsSection: React.FC<InterestsSectionProps> = ({
               style={[styles.input, { color: textColor }]}
               value={newInterest}
               onChangeText={onNewInterestChange}
-              placeholder="Enter an interest (e.g., Photography, Football, Reading)"
+              placeholder="Ingresa un interés (ej: Fotografía, Fútbol, Lectura)"
               placeholderTextColor={borderColor}
               onSubmitEditing={onAddInterest}
               returnKeyType="done"
@@ -271,4 +271,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InterestsSection;
+export default memo(InterestsSection);

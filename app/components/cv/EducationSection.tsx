@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -176,10 +176,10 @@ const EducationSection: React.FC<EducationSectionProps> = ({
     return (
       <ScrollView style={styles.formContainer}>
         <CVFormField
-          label="Institution"
+          label="Institución"
           value={formData.institution}
           onChangeText={(value) => setFormData(prev => ({ ...prev, institution: value }))}
-          placeholder="Name of educational institution"
+          placeholder="Nombre de la institución educativa"
         />
         
         <CVFormField
@@ -229,7 +229,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
               style={[styles.actionButton, styles.cancelButton, { borderColor }]}
               onPress={onCancel}
             >
-              <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              <ThemedText style={styles.cancelButtonText}>Cancelar</ThemedText>
             </TouchableOpacity>
           )}
           
@@ -238,7 +238,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
             onPress={handleSubmit}
           >
             <ThemedText style={styles.submitButtonText}>
-              {isEditing ? 'Update' : 'Add'}
+              {isEditing ? 'Actualizar' : 'Agregar'}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -306,7 +306,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
               style={[styles.actionButton, styles.cancelButton, { borderColor }]}
               onPress={onCancel}
             >
-              <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              <ThemedText style={styles.cancelButtonText}>Cancelar</ThemedText>
             </TouchableOpacity>
           )}
           
@@ -315,7 +315,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
             onPress={handleSubmit}
           >
             <ThemedText style={styles.submitButtonText}>
-              {isEditing ? 'Update' : 'Add'}
+              {isEditing ? 'Actualizar' : 'Agregar'}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -326,7 +326,7 @@ const EducationSection: React.FC<EducationSectionProps> = ({
   return (
     <>
     <CollapsibleSection
-      title="Education"
+      title="Educación"
       isCollapsed={isCollapsed}
       onToggle={onToggle}
       icon={<Ionicons name="school-outline" size={20} color={tintColor} />}
@@ -334,13 +334,13 @@ const EducationSection: React.FC<EducationSectionProps> = ({
       <View style={styles.container}>
         {/* Basic Education Information */}
         <View style={styles.subsection}>
-          <ThemedText style={styles.subsectionTitle}>Basic Education</ThemedText>
+          <ThemedText style={styles.subsectionTitle}>Educación Básica</ThemedText>
           
           <CVFormField
-            label="Education Level"
+            label="Nivel Educativo"
             value={education?.level || ''}
             onChangeText={(value) => handleFieldChange('level', value)}
-            placeholder="Primary, Secondary, University, etc."
+            placeholder="Primaria, Secundaria, Universidad, etc."
           />
           
           <CVFormField
@@ -608,4 +608,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default EducationSection;
+export default memo(EducationSection);

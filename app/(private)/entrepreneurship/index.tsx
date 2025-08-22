@@ -73,37 +73,22 @@ export default function EntrepreneurshipHub() {
     },
   ];
 
-  // Mock programs data (would be replaced with API call)
-  const mockPrograms: Program[] = [
-    {
-      id: '1',
-      name: 'Programa de Aceleración Tech',
-      description: 'Programa intensivo de 3 meses para startups tecnológicas',
-      organizer: 'CEMSE Bolivia',
-      type: 'Aceleración',
-      duration: '3 meses',
-      deadline: '2024-03-15',
-      location: 'Santa Cruz, Bolivia',
-    },
-    {
-      id: '2',
-      name: 'Incubadora de Negocios Rurales',
-      description: 'Apoyo para emprendimientos en zonas rurales',
-      organizer: 'Fundación Rural',
-      type: 'Incubación',
-      duration: '6 meses',
-      deadline: '2024-02-28',
-      location: 'Cochabamba, Bolivia',
-    },
-  ];
+  // TODO: Replace with actual programs API when available
+  // For now, keep empty until programs endpoint is implemented
 
   // Load programs data
   const loadPrograms = async () => {
     setLoadingPrograms(true);
     try {
-      // Simulate API call
+      // TODO: Implement actual API call when programs endpoint is available
+      // const response = await entrepreneurshipApiService.getPrograms(token);
+      // if (response.success && response.data) {
+      //   setPrograms(response.data);
+      // }
+      
+      // Simulate API call delay and return empty array for now
       await new Promise(resolve => setTimeout(resolve, 1000));
-      setPrograms(mockPrograms);
+      setPrograms([]);
     } catch (error) {
       console.error('Error loading programs:', error);
     } finally {
@@ -370,7 +355,7 @@ export default function EntrepreneurshipHub() {
                     <Ionicons name="rocket-outline" size={48} color={secondaryTextColor} />
                     <ThemedText style={styles.emptyTitle}>Sin programas disponibles</ThemedText>
                     <ThemedText style={styles.emptyMessage}>
-                      No hay programas activos en este momento
+                      Los programas estarán disponibles próximamente
                     </ThemedText>
                   </View>
                 ) : (

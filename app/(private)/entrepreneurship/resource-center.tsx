@@ -13,6 +13,8 @@ import { ThemedView } from '../../components/ThemedView';
 import { FilterModal } from '../../components/entrepreneurship/FilterModal';
 import { ResourceCard } from '../../components/entrepreneurship/ResourceCard';
 import { ResourceMetrics } from '../../components/entrepreneurship/ResourceMetrics';
+import Shimmer from '../../components/Shimmer';
+import { useResources } from '../../hooks/useResources';
 
 export default function ResourceCenter() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -33,6 +35,9 @@ export default function ResourceCenter() {
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const iconColor = useThemeColor({}, 'tint');
   const borderColor = useThemeColor({}, 'border');
+  
+  // API integration using existing useResources hook
+  const { resources = [], loading: loadingResources, error: resourcesError, fetchResources } = useResources();
 
   // Search form
   const searchForm = useFormik({
@@ -42,149 +47,37 @@ export default function ResourceCenter() {
     },
   });
 
-  // Mock metrics data
+  // Computed metrics from resources data
   const metrics: ResourceMetricsType[] = [
     {
       id: 'total',
       title: 'Recursos Totales',
-      value: '6',
+      value: resources.length.toString(),
       icon: 'library-outline',
       color: '#007AFF',
     },
     {
       id: 'downloads',
       title: 'Descargas Totales',
-      value: '12,841',
+      value: resources.reduce((total: number, resource: Resource) => total + (resource.downloads || 0), 0).toLocaleString(),
       icon: 'download-outline',
       color: '#32D74B',
     },
     {
       id: 'rating',
       title: 'Calificación Promedio',
-      value: '4.7',
+      value: resources.length > 0 ? (resources.reduce((total: number, resource: Resource) => total + (resource.rating || 0), 0) / resources.length).toFixed(1) : '0',
       icon: 'star',
       color: '#FFD60A',
     },
     {
       id: 'categories',
       title: 'Categorías',
-      value: '5',
+      value: new Set(resources.map((r: Resource) => r.category)).size.toString(),
       icon: 'grid-outline',
       color: '#5856D6',
     },
   ];
-
-  // Mock resources data
-  const [resources, setResources] = useState<Resource[]>([
-    {
-      id: '1',
-      type: 'Video',
-      level: 'Intermedio',
-      title: 'Finanzas para Emprendedores',
-      description: 'Video curso completo sobre gestión financiera básica para startups. Aprende a manejar flujo de caja, proyecciones y métricas financieras clave.',
-      category: 'Finanzas',
-      duration: '2 horas',
-      rating: 4.9,
-      ratingCount: 234,
-      downloads: 3456,
-      fileInfo: 'MP4 • 850 MB',
-      fileSize: '850 MB',
-      publishDate: '2024-01-09',
-      tags: ['Finanzas', 'Flujo de Caja', 'Métricas', 'Startups'],
-      isFavorite: false,
-      author: 'Carlos Mendoza',
-    },
-    {
-      id: '2',
-      type: 'Plantilla',
-      level: 'Principiante',
-      title: 'Plantilla de Plan de Negocios 2024',
-      description: 'Plantilla completa en Word con todas las secciones necesarias para crear un plan de negocios profesional. Incluye ejemplos y guías paso a paso.',
-      category: 'Planificación',
-      duration: '30 minutos',
-      rating: 4.8,
-      ratingCount: 156,
-      downloads: 2847,
-      fileInfo: 'DOCX • 2.5 MB',
-      fileSize: '2.5 MB',
-      publishDate: '2024-01-14',
-      tags: ['Plan de Negocios', 'Startups', 'Plantilla', 'Planificación'],
-      isFavorite: true,
-      author: 'CEMSE Bolivia',
-    },
-    {
-      id: '3',
-      type: 'Video',
-      level: 'Avanzado',
-      title: 'Cómo Presentar tu Startup a Inversionistas',
-      description: 'Masterclass completa sobre cómo crear y presentar un pitch deck efectivo. Incluye plantillas y ejemplos de presentaciones exitosas.',
-      category: 'Fundraising',
-      duration: '1.5 horas',
-      rating: 4.8,
-      ratingCount: 145,
-      downloads: 2156,
-      fileInfo: 'MP4 • 1.2 GB',
-      fileSize: '1.2 GB',
-      publishDate: '2024-01-24',
-      tags: ['Pitch Deck', 'Inversión', 'Presentación', 'Fundraising'],
-      isFavorite: false,
-      author: 'Ana Rodríguez',
-    },
-    {
-      id: '4',
-      type: 'Guía',
-      level: 'Intermedio',
-      title: 'Guía de Validación de Mercado',
-      description: 'Metodología completa para validar tu idea de negocio antes de invertir tiempo y dinero. Incluye herramientas prácticas y casos de estudio.',
-      category: 'Validación',
-      duration: '45 minutos',
-      rating: 4.6,
-      ratingCount: 98,
-      downloads: 1923,
-      fileInfo: 'PDF • 5.1 MB',
-      fileSize: '5.1 MB',
-      publishDate: '2024-01-19',
-      tags: ['Validación', 'Investigación de Mercado', 'MVP', 'Metodología'],
-      isFavorite: false,
-      author: 'Dr. María Rodríguez',
-    },
-    {
-      id: '5',
-      type: 'Herramienta',
-      level: 'Avanzado',
-      title: 'Calculadora de Proyecciones Financieras',
-      description: 'Herramienta Excel interactiva para calcular proyecciones financieras automáticamente. Incluye gráficos dinámicos y análisis de sensibilidad.',
-      category: 'Finanzas',
-      duration: '15 minutos',
-      rating: 4.7,
-      ratingCount: 89,
-      downloads: 1567,
-      fileInfo: 'XLSX • 1.2 MB',
-      fileSize: '1.2 MB',
-      publishDate: '2024-01-31',
-      tags: ['Excel', 'Proyecciones', 'Automatización', 'Herramientas'],
-      isFavorite: true,
-      author: 'Roberto Silva',
-    },
-    {
-      id: '6',
-      type: 'Podcast',
-      level: 'Principiante',
-      title: 'Podcast: Emprendedores Bolivianos Exitosos',
-      description: 'Serie de entrevistas inspiradoras con emprendedores bolivianos que han escalado sus negocios. Aprende de sus experiencias y estrategias.',
-      category: 'Inspiración',
-      duration: '30 minutos',
-      rating: 4.5,
-      ratingCount: 67,
-      downloads: 892,
-      fileInfo: 'MP3 • 45 MB',
-      fileSize: '45 MB',
-      publishDate: '2024-02-04',
-      tags: ['Historias de Éxito', 'Inspiración', 'Casos Bolivianos', 'Experiencias'],
-      isFavorite: false,
-      author: 'Podcast Emprende Bolivia',
-    },
-  ]);
 
   const sortOptions = [
     'Más populares',
@@ -244,13 +137,9 @@ export default function ResourceCenter() {
   };
 
   const handleFavoritePress = (resourceId: string) => {
-    setResources(prev =>
-      prev.map(resource =>
-        resource.id === resourceId
-          ? { ...resource, isFavorite: !resource.isFavorite }
-          : resource
-      )
-    );
+    // TODO: Implement API call to toggle favorite status
+    console.log('Toggle favorite for resource:', resourceId);
+    // For now, this would require updating the API to support favorites
   };
 
   const handleFiltersChange = (newFilters: ResourceFilter) => {
@@ -270,7 +159,7 @@ export default function ResourceCenter() {
       filtered = filtered.filter(resource =>
         resource.title.toLowerCase().includes(query) ||
         resource.description.toLowerCase().includes(query) ||
-        resource.tags.some(tag => tag.toLowerCase().includes(query))
+        resource.tags.some((tag: string) => tag.toLowerCase().includes(query))
       );
     }
     
@@ -399,18 +288,27 @@ export default function ResourceCenter() {
 
           {/* Resources List */}
           <View style={styles.resourcesSection}>
-            {filteredResources.map((resource) => (
-              <ResourceCard
-                key={resource.id}
-                resource={resource}
-                onPress={() => handleResourcePress(resource)}
-                onPreview={() => handleResourcePreview(resource)}
-                onDownload={() => handleResourceDownload(resource)}
-                onFavoritePress={() => handleFavoritePress(resource.id)}
-              />
-            ))}
-            
-            {filteredResources.length === 0 && (
+            {loadingResources ? (
+              <View style={styles.loadingContent}>
+                {[1, 2, 3].map((_, index) => (
+                  <Shimmer key={index}>
+                    <View style={[styles.skeletonCard, { backgroundColor: `${borderColor}20` }]} />
+                  </Shimmer>
+                ))}
+              </View>
+            ) : resourcesError ? (
+              <View style={styles.errorContent}>
+                <Ionicons name="alert-circle" size={48} color="#ef4444" />
+                <ThemedText style={styles.errorTitle}>Error al cargar recursos</ThemedText>
+                <ThemedText style={styles.errorMessage}>{resourcesError}</ThemedText>
+                <TouchableOpacity
+                  style={[styles.retryButton, { backgroundColor: iconColor }]}
+                  onPress={fetchResources}
+                >
+                  <ThemedText style={styles.retryButtonText}>Reintentar</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ) : filteredResources.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="search-outline" size={64} color={secondaryTextColor} />
                 <ThemedText type="subtitle" style={[styles.emptyTitle, { color: textColor }]}>
@@ -420,6 +318,17 @@ export default function ResourceCenter() {
                   Intenta ajustar tus filtros o términos de búsqueda
                 </ThemedText>
               </View>
+            ) : (
+              filteredResources.map((resource) => (
+                <ResourceCard
+                  key={resource.id}
+                  resource={resource}
+                  onPress={() => handleResourcePress(resource)}
+                  onPreview={() => handleResourcePreview(resource)}
+                  onDownload={() => handleResourceDownload(resource)}
+                  onFavoritePress={() => handleFavoritePress(resource.id)}
+                />
+              ))
             )}
           </View>
 
@@ -554,5 +463,38 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  loadingContent: {
+    gap: 16,
+  },
+  skeletonCard: {
+    height: 200,
+    borderRadius: 12,
+  },
+  errorContent: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 }); 

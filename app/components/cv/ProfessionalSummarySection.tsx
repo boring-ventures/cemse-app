@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo, useCallback } from 'react';
 import {
   View,
   TextInput,
@@ -330,4 +330,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProfessionalSummarySection;
+export default memo(ProfessionalSummarySection);

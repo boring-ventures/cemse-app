@@ -33,13 +33,30 @@ export function useBookmarks(): UseBookmarksReturn {
         const bookmarks = Array.isArray(response.data) ? response.data : [];
         setBookmarkedJobs(bookmarks);
       } else {
-        throw new Error(response.error?.message || 'Failed to fetch bookmarks');
+        // If the error is "Profile not found", initialize with empty bookmarks
+        if (response.error?.message?.includes('Profile not found') || 
+            response.error?.statusCode === 404) {
+          console.warn('User profile not found, initializing empty bookmarks');
+          setBookmarkedJobs([]);
+          setError(null); // Clear error since this is expected for new users
+        } else {
+          throw new Error(response.error?.message || 'Failed to fetch bookmarks');
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('Error fetching bookmarks:', err);
-      setBookmarkedJobs([]);
+      
+      // Handle profile not found gracefully
+      if (errorMessage.includes('Profile not found') || 
+          errorMessage.includes('404')) {
+        console.warn('User profile not found, initializing empty bookmarks');
+        setBookmarkedJobs([]);
+        setError(null);
+      } else {
+        setError(errorMessage);
+        console.error('Error fetching bookmarks:', err);
+        setBookmarkedJobs([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -79,7 +96,15 @@ export function useBookmarks(): UseBookmarksReturn {
         } else {
           setBookmarkedJobs(prev => prev.filter(id => id !== jobId));
         }
-        throw new Error(response.error?.message || 'Failed to toggle bookmark');
+        
+        // Handle profile not found during bookmark operations
+        if (response.error?.message?.includes('Profile not found') || 
+            response.error?.statusCode === 404) {
+          console.warn('Profile not found during bookmark operation - this might indicate the user profile needs to be created');
+          throw new Error('Tu perfil aún no está completamente configurado. Por favor, actualiza tu perfil primero.');
+        } else {
+          throw new Error(response.error?.message || 'Failed to toggle bookmark');
+        }
       }
     } catch (err) {
       // Revert optimistic update on error

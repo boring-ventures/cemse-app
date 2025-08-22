@@ -2,8 +2,10 @@ import { useThemeColor } from '@/app/hooks/useThemeColor';
 import { DashboardMetric } from '@/app/types/dashboard';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Dimensions } from 'react-native';
 import { ThemedText } from '../ThemedText';
+
+const { width } = Dimensions.get('window');
 
 interface MetricCardProps {
   metric: DashboardMetric;
@@ -88,48 +90,48 @@ export const MetricCard: React.FC<MetricCardProps> = ({ metric, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
+    width: (width - 48 - 16) / 2, // 2 cards per row with proper spacing
+    padding: 18, // Increased padding for mobile
+    borderRadius: 16, // Larger border radius
     borderWidth: 1,
-    margin: 6,
-    minHeight: 100,
+    margin: 8,
+    minHeight: 120, // Increased height for better mobile experience
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12, // Increased margin
   },
   trendContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   trendText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    marginLeft: 2,
+    marginLeft: 3,
   },
   content: {
     flex: 1,
     justifyContent: 'space-between',
   },
   value: {
-    fontSize: 24,
+    fontSize: 26, // Larger value for better readability
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   title: {
-    fontSize: 12,
+    fontSize: 13, // Slightly larger title
     fontWeight: '500',
-    lineHeight: 14,
+    lineHeight: 16,
   },
 }); 

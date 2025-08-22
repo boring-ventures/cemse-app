@@ -16,8 +16,12 @@ import {
  * Handles all HTTP requests with proper error handling and typing
  */
 
+// Session expiration callback type
+type SessionExpiredCallback = () => void;
+
 class ApiService {
   private baseUrl: string;
+  private sessionExpiredCallback: SessionExpiredCallback | null = null;
 
   constructor() {
     const environment = process.env.EXPO_PUBLIC_ENVIRONMENT || 'development';
@@ -303,7 +307,7 @@ class ApiService {
    * Get user's job applications
    */
   async getMyApplications(token: string): Promise<ApiResponse<any>> {
-    return this.authenticatedRequest<any>('/jobapplication/my', token);
+    return this.authenticatedRequest<any>('/jobapplication', token);
   }
 
   /**
@@ -337,6 +341,27 @@ class ApiService {
     return this.authenticatedRequest<void>(`/my-applications?applicationId=${applicationId}`, token, {
       method: 'DELETE',
     });
+  }
+
+  /**
+   * Check if user has applied to a specific job
+   */
+  async checkApplicationStatus(token: string, jobId: string): Promise<ApiResponse<{
+    hasApplied: boolean;
+    application?: {
+      id: string;
+      status: string;
+      appliedAt: string;
+    };
+  }>> {
+    return this.authenticatedRequest<{
+      hasApplied: boolean;
+      application?: {
+        id: string;
+        status: string;
+        appliedAt: string;
+      };
+    }>(`/check-application/${jobId}`, token);
   }
 
   /**
@@ -514,7 +539,7 @@ class ApiService {
       });
     } else {
       // If it's a File, create FormData
-      formData.append('avatar', imageFile);
+      formData.append('image', imageFile);
       return this.authenticatedRequest<{ avatarUrl: string; profile?: any }>('/files/upload/profile-image', token, {
         method: 'POST',
         body: formData,
@@ -523,6 +548,17 @@ class ApiService {
         },
       });
     }
+  }
+
+  /**
+   * Update profile avatar URL (PUT /api/profile/avatar)
+   * Used after image upload to update the profile with new avatar URL
+   */
+  async updateProfileAvatar(token: string, avatarUrl: string | null): Promise<ApiResponse<any>> {
+    return this.authenticatedRequest<any>('/profile/avatar', token, {
+      method: 'PUT',
+      body: JSON.stringify({ avatarUrl }),
+    });
   }
 }
 
