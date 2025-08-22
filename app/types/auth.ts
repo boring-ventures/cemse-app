@@ -1,9 +1,9 @@
 /**
  * Authentication types for JWT-based system
- * Supporting JOVENES role for youth users
+ * Supporting YOUTH role for youth users
  */
 
-export type UserRole = 'JOVENES' | 'ADMIN';
+export type UserRole = 'YOUTH' | 'ADMIN';
 
 export interface User {
   id: string;

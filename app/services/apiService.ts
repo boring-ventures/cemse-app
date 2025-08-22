@@ -1,14 +1,14 @@
-import { 
-  ApiResponse, 
-  LoginCredentials, 
-  LoginResponse,
-  RegisterData,
-  RegisterResponse,
-  RefreshTokenResponse,
-  User,
-  ProfileUpdateData,
-  PasswordChangeData,
-  AuthError
+import {
+    ApiResponse,
+    AuthError,
+    LoginCredentials,
+    LoginResponse,
+    PasswordChangeData,
+    ProfileUpdateData,
+    RefreshTokenResponse,
+    RegisterData,
+    RegisterResponse,
+    User
 } from '@/app/types/auth';
 
 /**
@@ -132,7 +132,7 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({
         ...userData,
-        role: 'JOVENES' // Force JOVENES role for mobile app
+        role: 'YOUTH' // Force YOUTH role for mobile app
       }),
     });
   }

@@ -84,8 +84,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const isTokenValid = await authService.validateToken();
         
         if (isTokenValid) {
-          // Validate user role for JOVENES
-          if (storedSession.user.role !== 'JOVENES') {
+          // Validate user role for YOUTH
+          if (storedSession.user.role !== 'YOUTH') {
             console.warn('Invalid user role, clearing session');
             await authService.clearSession();
             return false;
