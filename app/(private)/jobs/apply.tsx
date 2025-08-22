@@ -305,7 +305,7 @@ export default function ApplyScreen() {
           />
           <ThemedButton
             title="Enviar aplicación"
-            onPress={applicationForm.handleSubmit}
+            onPress={() => applicationForm.handleSubmit()}
             type="primary"
             style={styles.submitButton}
           />

@@ -30,7 +30,7 @@ export const ConnectionButton: React.FC<ConnectionButtonProps> = ({
   const backgroundColor = useThemeColor({}, 'card');
   const borderColor = useThemeColor({}, 'border');
 
-  const handlePress = (action: () => void | undefined) => {
+  const handlePress = (action?: () => void) => {
     if (action) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       action();
@@ -139,9 +139,11 @@ export const PendingRequestButtons: React.FC<{
     ? { fontSize: 12, iconSize: 16 } 
     : { fontSize: 14, iconSize: 18 };
 
-  const handlePress = (action: () => void) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    action();
+  const handlePress = (action?: () => void) => {
+    if (action) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      action();
+    }
   };
 
   return (

@@ -288,7 +288,7 @@ export const SearchJobsContent: React.FC<SearchJobsContentProps> = ({
           <View style={styles.searchActions}>
             <ThemedButton
               title="Buscar"
-              onPress={searchForm.handleSubmit}
+              onPress={() => searchForm.handleSubmit()}
               type="primary"
               style={styles.searchButton}
             />
