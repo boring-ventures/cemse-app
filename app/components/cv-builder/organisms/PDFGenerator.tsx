@@ -67,6 +67,7 @@ export const PDFGenerator = React.memo<PDFGeneratorProps>(({
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [pdfOptions, setPdfOptions] = useState<PDFGenerationOptions>(DEFAULT_PDF_OPTIONS);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [tempSelectedTemplate, setTempSelectedTemplate] = useState(selectedTemplate);
   
   // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
@@ -158,6 +159,25 @@ export const PDFGenerator = React.memo<PDFGeneratorProps>(({
       },
     }));
   }, []);
+  
+  const handleOpenTemplateSelector = useCallback(() => {
+    setTempSelectedTemplate(selectedTemplate);
+    setShowTemplateSelector(true);
+  }, [selectedTemplate]);
+  
+  const handleSelectTemplate = useCallback((template: CVTemplate) => {
+    setTempSelectedTemplate(template);
+  }, []);
+  
+  const handleConfirmTemplate = useCallback(() => {
+    onTemplateChange(tempSelectedTemplate);
+    setShowTemplateSelector(false);
+  }, [tempSelectedTemplate, onTemplateChange]);
+  
+  const handleCancelTemplate = useCallback(() => {
+    setTempSelectedTemplate(selectedTemplate);
+    setShowTemplateSelector(false);
+  }, [selectedTemplate]);
   
   const styles = StyleSheet.create({
     container: {
@@ -423,7 +443,7 @@ export const PDFGenerator = React.memo<PDFGeneratorProps>(({
             </View>
             <Pressable
               style={styles.changeTemplateButton}
-              onPress={() => setShowTemplateSelector(true)}
+              onPress={handleOpenTemplateSelector}
             >
               <Text style={styles.changeTemplateText}>Cambiar</Text>
             </Pressable>
@@ -554,9 +574,9 @@ export const PDFGenerator = React.memo<PDFGeneratorProps>(({
                   key={template.id}
                   style={[
                     styles.templateOption,
-                    selectedTemplate.id === template.id && styles.templateOptionSelected
+                    tempSelectedTemplate.id === template.id && styles.templateOptionSelected
                   ]}
-                  onPress={() => onTemplateChange(template)}
+                  onPress={() => handleSelectTemplate(template)}
                 >
                   <View style={styles.templateColors}>
                     {template.colorScheme.map((color, index) => (
@@ -572,7 +592,7 @@ export const PDFGenerator = React.memo<PDFGeneratorProps>(({
                       {template.description}
                     </Text>
                   </View>
-                  {selectedTemplate.id === template.id && (
+                  {tempSelectedTemplate.id === template.id && (
                     <Ionicons name="checkmark-circle" size={24} color={successColor} />
                   )}
                 </Pressable>
@@ -582,7 +602,7 @@ export const PDFGenerator = React.memo<PDFGeneratorProps>(({
             <View style={styles.modalButtons}>
               <Pressable
                 style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowTemplateSelector(false)}
+                onPress={handleCancelTemplate}
               >
                 <Text style={[styles.modalButtonText, styles.cancelButtonText]}>
                   Cancelar
@@ -590,7 +610,7 @@ export const PDFGenerator = React.memo<PDFGeneratorProps>(({
               </Pressable>
               <Pressable
                 style={[styles.modalButton, styles.confirmButton]}
-                onPress={() => setShowTemplateSelector(false)}
+                onPress={handleConfirmTemplate}
               >
                 <Text style={[styles.modalButtonText, styles.confirmButtonText]}>
                   Confirmar

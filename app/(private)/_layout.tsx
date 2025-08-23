@@ -68,6 +68,8 @@ export default function PrivateLayout() {
         options={{
           title: "Mi CV",
           headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="document-text-outline" size={size} color={color} />
           ),
@@ -169,6 +171,14 @@ export default function PrivateLayout() {
         name="cv-builder/preview"
         options={{
           headerTitle: "Vista Previa",
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="cv-builder/pdf-generator"
+        options={{
+          headerTitle: "Generar PDF",
           href: null,
           tabBarStyle: { display: "none" },
         }}
